@@ -1,0 +1,9 @@
+{
+  "api_key": "sk-4jkOOy4t0qnY2t0rCQbEddyZaaMpYscsGZQ32Fa34GnIND8p",
+  "base_url": "https://api.moonshot.cn/v1",
+  "model_name": "kimi-k2-turbo-preview",
+  "system_prompt": "你是一个专业的AI助手，能够通过工具帮用查询当前目录下的内容。",
+  "mcp_servers": "file-reader: http://localhost:8001/mcp",
+  "history_limit": "10",
+  "enable_history": false
+}

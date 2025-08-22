@@ -1,0 +1,5 @@
+# 核心依赖
+pymongo==4.5.0
+psutil==5.9.5
+requests==2.31.0
+

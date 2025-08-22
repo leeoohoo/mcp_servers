@@ -1,0 +1,16 @@
+[
+  {
+    "conversation_id": "expert_conv_1703ff87c45e48f1",
+    "role": "user",
+    "content": "你好",
+    "timestamp": "2025-08-22T04:31:37.603683",
+    "metadata": {}
+  },
+  {
+    "conversation_id": "expert_conv_1703ff87c45e48f1",
+    "role": "assistant",
+    "content": "你好！很高兴见到你。请告诉我，你想让我帮你做点什么？",
+    "timestamp": "2025-08-22T04:31:41.915429",
+    "metadata": {}
+  }
+]

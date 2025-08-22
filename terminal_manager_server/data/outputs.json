@@ -1,0 +1,170 @@
+[
+  {
+    "output_id": "4eb4d2c7-8322-4e73-80e8-1f2668a59231",
+    "command_id": "3f59a7ff-4747-4e10-9045-b8e502a9cf52",
+    "content": "开始执行命令: ls",
+    "output_type": "system",
+    "timestamp": "2025-08-22T05:07:36.026939",
+    "sequence": 1
+  },
+  {
+    "output_id": "c89a30aa-21f6-4521-82d2-b659af22f63f",
+    "command_id": "3f59a7ff-4747-4e10-9045-b8e502a9cf52",
+    "content": "config",
+    "output_type": "stdout",
+    "timestamp": "2025-08-22T05:07:36.044086",
+    "sequence": 2
+  },
+  {
+    "output_id": "ac8d9c18-5024-411c-94ed-4b2448598982",
+    "command_id": "3f59a7ff-4747-4e10-9045-b8e502a9cf52",
+    "content": "java",
+    "output_type": "stdout",
+    "timestamp": "2025-08-22T05:07:36.044608",
+    "sequence": 3
+  },
+  {
+    "output_id": "17835d65-3c8f-4f5c-95ed-82c4ed31ec06",
+    "command_id": "3f59a7ff-4747-4e10-9045-b8e502a9cf52",
+    "content": "learn",
+    "output_type": "stdout",
+    "timestamp": "2025-08-22T05:07:36.044940",
+    "sequence": 4
+  },
+  {
+    "output_id": "ae7663c2-e249-41bf-af12-c870b7427cde",
+    "command_id": "3f59a7ff-4747-4e10-9045-b8e502a9cf52",
+    "content": "my_project",
+    "output_type": "stdout",
+    "timestamp": "2025-08-22T05:07:36.045232",
+    "sequence": 5
+  },
+  {
+    "output_id": "eb53c896-ffdd-46fa-a0b2-8b9b2a3f9b7b",
+    "command_id": "3f59a7ff-4747-4e10-9045-b8e502a9cf52",
+    "content": "python",
+    "output_type": "stdout",
+    "timestamp": "2025-08-22T05:07:36.045537",
+    "sequence": 6
+  },
+  {
+    "output_id": "408c26a3-3508-471e-a0be-6696211c2b0c",
+    "command_id": "3f59a7ff-4747-4e10-9045-b8e502a9cf52",
+    "content": "shared-api",
+    "output_type": "stdout",
+    "timestamp": "2025-08-22T05:07:36.045844",
+    "sequence": 7
+  },
+  {
+    "output_id": "e97d4ecf-cf9e-4f0b-86e5-0c6a9df0fa53",
+    "command_id": "3f59a7ff-4747-4e10-9045-b8e502a9cf52",
+    "content": "work",
+    "output_type": "stdout",
+    "timestamp": "2025-08-22T05:07:36.046046",
+    "sequence": 8
+  },
+  {
+    "output_id": "5205a5e9-84b5-4ceb-92c0-8f3e7721e527",
+    "command_id": "3f59a7ff-4747-4e10-9045-b8e502a9cf52",
+    "content": "命令执行完成，退出码: 0",
+    "output_type": "system",
+    "timestamp": "2025-08-22T05:07:36.046673",
+    "sequence": 9
+  },
+  {
+    "output_id": "392796dd-345b-49cf-8ad8-e87b46fe9e52",
+    "command_id": "0bc28fb2-1c21-4409-9a0c-085857a10480",
+    "content": "开始执行命令: ls -a",
+    "output_type": "system",
+    "timestamp": "2025-08-22T05:07:45.682769",
+    "sequence": 1
+  },
+  {
+    "output_id": "de9c45a1-521a-4a96-8fc3-21de67b995fb",
+    "command_id": "0bc28fb2-1c21-4409-9a0c-085857a10480",
+    "content": ".",
+    "output_type": "stdout",
+    "timestamp": "2025-08-22T05:07:45.692471",
+    "sequence": 2
+  },
+  {
+    "output_id": "c2a1aa4d-6963-4386-bec8-136a4114eeb0",
+    "command_id": "0bc28fb2-1c21-4409-9a0c-085857a10480",
+    "content": "..",
+    "output_type": "stdout",
+    "timestamp": "2025-08-22T05:07:45.693249",
+    "sequence": 3
+  },
+  {
+    "output_id": "dd39501e-2aa4-4577-9f3a-3b0c1e383c29",
+    "command_id": "0bc28fb2-1c21-4409-9a0c-085857a10480",
+    "content": ".DS_Store",
+    "output_type": "stdout",
+    "timestamp": "2025-08-22T05:07:45.694359",
+    "sequence": 4
+  },
+  {
+    "output_id": "80730b5a-34e0-45f6-a5f4-6ea26fefb468",
+    "command_id": "0bc28fb2-1c21-4409-9a0c-085857a10480",
+    "content": "config",
+    "output_type": "stdout",
+    "timestamp": "2025-08-22T05:07:45.694755",
+    "sequence": 5
+  },
+  {
+    "output_id": "36afeb7c-09d5-4331-86ca-3939672484a6",
+    "command_id": "0bc28fb2-1c21-4409-9a0c-085857a10480",
+    "content": "java",
+    "output_type": "stdout",
+    "timestamp": "2025-08-22T05:07:45.695130",
+    "sequence": 6
+  },
+  {
+    "output_id": "ab9f4634-8647-4482-b6b4-b9d5a32bc0ce",
+    "command_id": "0bc28fb2-1c21-4409-9a0c-085857a10480",
+    "content": "learn",
+    "output_type": "stdout",
+    "timestamp": "2025-08-22T05:07:45.695488",
+    "sequence": 7
+  },
+  {
+    "output_id": "276c9076-9aa9-44af-99e5-5f88e8bbc700",
+    "command_id": "0bc28fb2-1c21-4409-9a0c-085857a10480",
+    "content": "my_project",
+    "output_type": "stdout",
+    "timestamp": "2025-08-22T05:07:45.695855",
+    "sequence": 8
+  },
+  {
+    "output_id": "9c342a25-fff8-484b-b24f-fb5b92166da4",
+    "command_id": "0bc28fb2-1c21-4409-9a0c-085857a10480",
+    "content": "python",
+    "output_type": "stdout",
+    "timestamp": "2025-08-22T05:07:45.696291",
+    "sequence": 9
+  },
+  {
+    "output_id": "b956a518-d13e-4951-8810-f5e0fcf7868b",
+    "command_id": "0bc28fb2-1c21-4409-9a0c-085857a10480",
+    "content": "shared-api",
+    "output_type": "stdout",
+    "timestamp": "2025-08-22T05:07:45.696721",
+    "sequence": 10
+  },
+  {
+    "output_id": "c965ce94-8d86-4725-a4de-53e91d77a58c",
+    "command_id": "0bc28fb2-1c21-4409-9a0c-085857a10480",
+    "content": "work",
+    "output_type": "stdout",
+    "timestamp": "2025-08-22T05:07:45.697170",
+    "sequence": 11
+  },
+  {
+    "output_id": "a9cf98cb-45cf-4e06-be8e-48e659af4978",
+    "command_id": "0bc28fb2-1c21-4409-9a0c-085857a10480",
+    "content": "命令执行完成，退出码: 0",
+    "output_type": "system",
+    "timestamp": "2025-08-22T05:07:45.698064",
+    "sequence": 12
+  }
+]

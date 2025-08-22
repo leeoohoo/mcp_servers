@@ -1,0 +1,26 @@
+[
+  {
+    "command_id": "3f59a7ff-4747-4e10-9045-b8e502a9cf52",
+    "terminal_id": "876a86d4-36d6-481f-bdaa-e91962db72af",
+    "command": "ls",
+    "status": "completed",
+    "start_time": "2025-08-22T05:07:36.024552",
+    "end_time": "2025-08-22T05:07:36.046275",
+    "exit_code": 0,
+    "pid": 9199,
+    "command_type": "normal",
+    "created_at": "2025-08-22T05:07:36.024557"
+  },
+  {
+    "command_id": "0bc28fb2-1c21-4409-9a0c-085857a10480",
+    "terminal_id": "876a86d4-36d6-481f-bdaa-e91962db72af",
+    "command": "ls -a",
+    "status": "completed",
+    "start_time": "2025-08-22T05:07:45.681505",
+    "end_time": "2025-08-22T05:07:45.697591",
+    "exit_code": 0,
+    "pid": 9301,
+    "command_type": "normal",
+    "created_at": "2025-08-22T05:07:45.681507"
+  }
+]

@@ -1,0 +1,162 @@
+2025-08-22 13:05:35 - root - INFO - 日志系统初始化完成 - 级别: INFO, 文件: logs/terminal_manager.log
+2025-08-22 13:05:35 - terminal_manager_server.terminal_mcp_server - INFO - 正在初始化 Terminal MCP Server...
+2025-08-22 13:05:35 - terminal_manager_server.terminal_mcp_server - INFO - Terminal MCP Server 初始化完成
+2025-08-22 13:05:35 - terminal_manager_server.terminal_mcp_server - INFO - MCP Server 'Terminal MCP Server' initialized with 8 tools and 0 resources
+2025-08-22 13:05:35 - mcp_framework.core.config.ServerConfigManager - INFO - Loaded server config from /Users/lilei/project/learn/mcp_servers/terminal_manager_server/dist/config/Terminal MCP Server_port_8080_server_config.json
+2025-08-22 13:05:35 - mcp_framework.server.http_server.MCPHTTPServer - INFO - MCP HTTP Server started on http://localhost:8080
+2025-08-22 13:05:35 - mcp_framework.server.http_server.MCPHTTPServer - INFO - Setup page: http://localhost:8080/setup
+2025-08-22 13:05:35 - mcp_framework.server.http_server.MCPHTTPServer - INFO - Test page: http://localhost:8080/test
+2025-08-22 13:05:39 - mcp_framework.server.middleware - INFO - GET /setup - 200 - 0.000s
+2025-08-22 13:05:39 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:05:39 +0800] "GET /setup HTTP/1.1" 200 15303 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:05:39 - mcp_framework.server.middleware - INFO - GET /api/server/parameters - 200 - 0.000s
+2025-08-22 13:05:39 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:05:39 +0800] "GET /api/server/parameters HTTP/1.1" 200 2403 "http://localhost:8080/setup" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:05:40 - mcp_framework.server.middleware - INFO - GET /api/server/status - 200 - 0.000s
+2025-08-22 13:05:40 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:05:40 +0800] "GET /api/server/status HTTP/1.1" 200 437 "http://localhost:8080/setup" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:05:40 - mcp_framework.server.middleware - INFO - GET /favicon.ico - 204 - 0.000s
+2025-08-22 13:05:40 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:05:40 +0800] "GET /favicon.ico HTTP/1.1" 204 270 "http://localhost:8080/setup" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:05:51 - mcp_framework.core.config.ServerConfigManager - INFO - Saved server config to /Users/lilei/project/learn/mcp_servers/terminal_manager_server/dist/config/Terminal MCP Server_server_config.json
+2025-08-22 13:05:51 - terminal_manager_server.terminal_mcp_server - INFO - Server configured and saved: {'storage_type': 'file', 'mongodb_uri': 'mongodb://admin:password@localhost:27017/terminal_manager?authSource=admin', 'data_dir': 'data', 'max_terminals': 10, 'enable_cleanup': True, 'cleanup_threshold_minutes': 20}
+2025-08-22 13:05:51 - mcp_framework.server.middleware - INFO - POST /api/server/configure - 200 - 0.002s
+2025-08-22 13:05:51 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:05:51 +0800] "POST /api/server/configure HTTP/1.1" 200 391 "http://localhost:8080/setup" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:05:51 - mcp_framework.server.middleware - INFO - GET /api/server/status - 200 - 0.000s
+2025-08-22 13:05:51 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:05:51 +0800] "GET /api/server/status HTTP/1.1" 200 649 "http://localhost:8080/setup" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:05:52 - mcp_framework.server.middleware - INFO - GET /test - 200 - 0.001s
+2025-08-22 13:05:52 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:05:52 +0800] "GET /test HTTP/1.1" 200 38116 "http://localhost:8080/setup" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:05:52 - mcp_framework.server.middleware - INFO - GET /info - 200 - 0.000s
+2025-08-22 13:05:52 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:05:52 +0800] "GET /info HTTP/1.1" 200 893 "http://localhost:8080/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:05:52 - mcp_framework.server.middleware - INFO - POST /mcp - 200 - 0.000s
+2025-08-22 13:05:52 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:05:52 +0800] "POST /mcp HTTP/1.1" 200 3271 "http://localhost:8080/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:05:52 - mcp_framework.server.middleware - INFO - POST /mcp - 200 - 0.000s
+2025-08-22 13:05:52 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:05:52 +0800] "POST /mcp HTTP/1.1" 200 385 "http://localhost:8080/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:05:52 - mcp_framework.server.middleware - INFO - GET /favicon.ico - 204 - 0.000s
+2025-08-22 13:05:52 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:05:52 +0800] "GET /favicon.ico HTTP/1.1" 204 270 "http://localhost:8080/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:05:59 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: get_terminals, arguments: {'status_filter': 'all'}
+2025-08-22 13:05:59 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'status_filter': 'all'}
+2025-08-22 13:05:59 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminals' schema: {}
+2025-08-22 13:05:59 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminals' properties: {}
+2025-08-22 13:05:59 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'status_filter': 'all'}
+2025-08-22 13:05:59 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.015s
+2025-08-22 13:05:59 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:05:59 +0800] "POST /sse/tool/call HTTP/1.1" 200 657 "http://localhost:8080/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:06:06 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: create_terminal, arguments: {'working_directory': '/Users/lilei/project'}
+2025-08-22 13:06:06 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'working_directory': '/Users/lilei/project'}
+2025-08-22 13:06:06 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'create_terminal' schema: {}
+2025-08-22 13:06:06 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'create_terminal' properties: {}
+2025-08-22 13:06:06 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'working_directory': '/Users/lilei/project'}
+2025-08-22 13:06:06 - terminal_manager_server.services.terminal_service - INFO - 创建终端成功: 876a86d4-36d6-481f-bdaa-e91962db72af
+2025-08-22 13:06:06 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.013s
+2025-08-22 13:06:06 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:06:06 +0800] "POST /sse/tool/call HTTP/1.1" 200 815 "http://localhost:8080/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:06:15 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: get_terminal_current_output, arguments: {'terminal_id': '876a86d4-36d6-481f-bdaa-e91962db72af', 'follow': True}
+2025-08-22 13:06:15 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'terminal_id': '876a86d4-36d6-481f-bdaa-e91962db72af', 'follow': True}
+2025-08-22 13:06:15 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminal_current_output' schema: {}
+2025-08-22 13:06:15 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminal_current_output' properties: {}
+2025-08-22 13:06:15 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'terminal_id': '876a86d4-36d6-481f-bdaa-e91962db72af', 'follow': True}
+2025-08-22 13:06:15 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.018s
+2025-08-22 13:06:15 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:06:15 +0800] "POST /sse/tool/call HTTP/1.1" 200 782 "http://localhost:8080/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:06:20 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: get_terminal_commands, arguments: {'terminal_id': '876a86d4-36d6-481f-bdaa-e91962db72af', 'page': '1', 'limit': '10'}
+2025-08-22 13:06:20 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'terminal_id': '876a86d4-36d6-481f-bdaa-e91962db72af', 'page': '1', 'limit': '10'}
+2025-08-22 13:06:20 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminal_commands' schema: {}
+2025-08-22 13:06:20 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminal_commands' properties: {}
+2025-08-22 13:06:20 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'terminal_id': '876a86d4-36d6-481f-bdaa-e91962db72af', 'page': '1', 'limit': '10'}
+2025-08-22 13:06:20 - terminal_manager_server.services.command_service - ERROR - 获取终端命令历史异常: unsupported operand type(s) for +: 'int' and 'str'
+2025-08-22 13:06:20 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.014s
+2025-08-22 13:06:20 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:06:20 +0800] "POST /sse/tool/call HTTP/1.1" 200 764 "http://localhost:8080/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:07:36 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: execute_command, arguments: {'terminal_id': '876a86d4-36d6-481f-bdaa-e91962db72af', 'command': 'ls', 'command_type': 'normal', 'follow': True}
+2025-08-22 13:07:36 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'terminal_id': '876a86d4-36d6-481f-bdaa-e91962db72af', 'command': 'ls', 'command_type': 'normal', 'follow': True}
+2025-08-22 13:07:36 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'execute_command' schema: {}
+2025-08-22 13:07:36 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'execute_command' properties: {}
+2025-08-22 13:07:36 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'terminal_id': '876a86d4-36d6-481f-bdaa-e91962db72af', 'command': 'ls', 'command_type': 'normal', 'follow': True}
+2025-08-22 13:07:36 - terminal_manager_server.services.command_service - INFO - 开始执行命令: 3f59a7ff-4747-4e10-9045-b8e502a9cf52 - ls
+2025-08-22 13:07:36 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 3f59a7ff-4747-4e10-9045-b8e502a9cf52, 序号: 1, 类型: system, 内容: 开始执行命令: ls...
+2025-08-22 13:07:36 - terminal_manager_server.services.process_manager - INFO - 注册进程: 3f59a7ff-4747-4e10-9045-b8e502a9cf52 -> PID 9199
+2025-08-22 13:07:36 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 3f59a7ff-4747-4e10-9045-b8e502a9cf52, 序号: 2, 类型: stdout, 内容: config...
+2025-08-22 13:07:36 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 3f59a7ff-4747-4e10-9045-b8e502a9cf52, 序号: 3, 类型: stdout, 内容: java...
+2025-08-22 13:07:36 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 3f59a7ff-4747-4e10-9045-b8e502a9cf52, 序号: 4, 类型: stdout, 内容: learn...
+2025-08-22 13:07:36 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 3f59a7ff-4747-4e10-9045-b8e502a9cf52, 序号: 5, 类型: stdout, 内容: my_project...
+2025-08-22 13:07:36 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 3f59a7ff-4747-4e10-9045-b8e502a9cf52, 序号: 6, 类型: stdout, 内容: python...
+2025-08-22 13:07:36 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 3f59a7ff-4747-4e10-9045-b8e502a9cf52, 序号: 7, 类型: stdout, 内容: shared-api...
+2025-08-22 13:07:36 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 3f59a7ff-4747-4e10-9045-b8e502a9cf52, 序号: 8, 类型: stdout, 内容: work...
+2025-08-22 13:07:36 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 3f59a7ff-4747-4e10-9045-b8e502a9cf52, 序号: 9, 类型: system, 内容: 命令执行完成，退出码: 0...
+2025-08-22 13:07:36 - terminal_manager_server.services.process_manager - INFO - 注销进程: 3f59a7ff-4747-4e10-9045-b8e502a9cf52 -> PID 9199
+2025-08-22 13:07:36 - terminal_manager_server.services.command_service - INFO - 命令执行完成: 3f59a7ff-4747-4e10-9045-b8e502a9cf52 - 退出码: 0
+2025-08-22 13:07:36 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.229s
+2025-08-22 13:07:36 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:07:36 +0800] "POST /sse/tool/call HTTP/1.1" 200 2466 "http://localhost:8080/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:07:45 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: execute_command, arguments: {'terminal_id': '876a86d4-36d6-481f-bdaa-e91962db72af', 'command': 'ls -a', 'command_type': 'normal', 'follow': True}
+2025-08-22 13:07:45 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'terminal_id': '876a86d4-36d6-481f-bdaa-e91962db72af', 'command': 'ls -a', 'command_type': 'normal', 'follow': True}
+2025-08-22 13:07:45 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'execute_command' schema: {}
+2025-08-22 13:07:45 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'execute_command' properties: {}
+2025-08-22 13:07:45 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'terminal_id': '876a86d4-36d6-481f-bdaa-e91962db72af', 'command': 'ls -a', 'command_type': 'normal', 'follow': True}
+2025-08-22 13:07:45 - terminal_manager_server.services.command_service - INFO - 开始执行命令: 0bc28fb2-1c21-4409-9a0c-085857a10480 - ls -a
+2025-08-22 13:07:45 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 0bc28fb2-1c21-4409-9a0c-085857a10480, 序号: 1, 类型: system, 内容: 开始执行命令: ls -a...
+2025-08-22 13:07:45 - terminal_manager_server.services.process_manager - INFO - 注册进程: 0bc28fb2-1c21-4409-9a0c-085857a10480 -> PID 9301
+2025-08-22 13:07:45 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 0bc28fb2-1c21-4409-9a0c-085857a10480, 序号: 2, 类型: stdout, 内容: ....
+2025-08-22 13:07:45 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 0bc28fb2-1c21-4409-9a0c-085857a10480, 序号: 3, 类型: stdout, 内容: .....
+2025-08-22 13:07:45 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 0bc28fb2-1c21-4409-9a0c-085857a10480, 序号: 4, 类型: stdout, 内容: .DS_Store...
+2025-08-22 13:07:45 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 0bc28fb2-1c21-4409-9a0c-085857a10480, 序号: 5, 类型: stdout, 内容: config...
+2025-08-22 13:07:45 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 0bc28fb2-1c21-4409-9a0c-085857a10480, 序号: 6, 类型: stdout, 内容: java...
+2025-08-22 13:07:45 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 0bc28fb2-1c21-4409-9a0c-085857a10480, 序号: 7, 类型: stdout, 内容: learn...
+2025-08-22 13:07:45 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 0bc28fb2-1c21-4409-9a0c-085857a10480, 序号: 8, 类型: stdout, 内容: my_project...
+2025-08-22 13:07:45 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 0bc28fb2-1c21-4409-9a0c-085857a10480, 序号: 9, 类型: stdout, 内容: python...
+2025-08-22 13:07:45 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 0bc28fb2-1c21-4409-9a0c-085857a10480, 序号: 10, 类型: stdout, 内容: shared-api...
+2025-08-22 13:07:45 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 0bc28fb2-1c21-4409-9a0c-085857a10480, 序号: 11, 类型: stdout, 内容: work...
+2025-08-22 13:07:45 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 0bc28fb2-1c21-4409-9a0c-085857a10480, 序号: 12, 类型: system, 内容: 命令执行完成，退出码: 0...
+2025-08-22 13:07:45 - terminal_manager_server.services.process_manager - INFO - 注销进程: 0bc28fb2-1c21-4409-9a0c-085857a10480 -> PID 9301
+2025-08-22 13:07:45 - terminal_manager_server.services.command_service - INFO - 命令执行完成: 0bc28fb2-1c21-4409-9a0c-085857a10480 - 退出码: 0
+2025-08-22 13:07:45 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.265s
+2025-08-22 13:07:45 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:07:45 +0800] "POST /sse/tool/call HTTP/1.1" 200 2901 "http://localhost:8080/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:09:13 - asyncio - ERROR - Task was destroyed but it is pending!
+task: <Task cancelling name='Task-1' coro=<run_server() done, defined at mcp_framework/core/launcher.py:26> wait_for=<Future cancelled> cb=[gather.<locals>._done_callback() at asyncio/tasks.py:767]>
+2025-08-22 13:20:32 - root - INFO - 日志系统初始化完成 - 级别: INFO, 文件: logs/terminal_manager.log
+2025-08-22 13:20:32 - terminal_manager_server.terminal_mcp_server - INFO - 正在初始化 Terminal MCP Server...
+2025-08-22 13:20:32 - terminal_manager_server.terminal_mcp_server - INFO - Terminal MCP Server 初始化完成
+2025-08-22 13:20:32 - terminal_manager_server.terminal_mcp_server - INFO - MCP Server 'Terminal MCP Server' initialized with 8 tools and 0 resources
+2025-08-22 13:20:32 - mcp_framework.core.config.ServerConfigManager - INFO - Loaded server config from /Users/lilei/project/learn/mcp_servers/terminal_manager_server/dist/config/Terminal MCP Server_port_8080_server_config.json
+2025-08-22 13:20:32 - mcp_framework.server.http_server.MCPHTTPServer - INFO - MCP HTTP Server started on http://localhost:8080
+2025-08-22 13:20:32 - mcp_framework.server.http_server.MCPHTTPServer - INFO - Setup page: http://localhost:8080/setup
+2025-08-22 13:20:32 - mcp_framework.server.http_server.MCPHTTPServer - INFO - Test page: http://localhost:8080/test
+2025-08-22 13:20:37 - mcp_framework.server.middleware - INFO - GET /test - 200 - 0.001s
+2025-08-22 13:20:37 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:20:37 +0800] "GET /test HTTP/1.1" 200 38116 "http://localhost:8080/setup" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:20:37 - mcp_framework.server.middleware - INFO - GET /info - 200 - 0.000s
+2025-08-22 13:20:37 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:20:37 +0800] "GET /info HTTP/1.1" 200 893 "http://localhost:8080/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:20:37 - mcp_framework.server.middleware - INFO - POST /mcp - 200 - 0.001s
+2025-08-22 13:20:37 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:20:37 +0800] "POST /mcp HTTP/1.1" 200 3271 "http://localhost:8080/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:20:37 - mcp_framework.server.middleware - INFO - POST /mcp - 200 - 0.000s
+2025-08-22 13:20:37 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:20:37 +0800] "POST /mcp HTTP/1.1" 200 385 "http://localhost:8080/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:20:37 - mcp_framework.server.middleware - INFO - GET /favicon.ico - 204 - 0.000s
+2025-08-22 13:20:37 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:20:37 +0800] "GET /favicon.ico HTTP/1.1" 204 270 "http://localhost:8080/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:20:40 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: get_terminals, arguments: {'status_filter': 'all'}
+2025-08-22 13:20:40 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'status_filter': 'all'}
+2025-08-22 13:20:40 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminals' schema: {}
+2025-08-22 13:20:40 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminals' properties: {}
+2025-08-22 13:20:40 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'status_filter': 'all'}
+2025-08-22 13:20:40 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.014s
+2025-08-22 13:20:40 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:20:40 +0800] "POST /sse/tool/call HTTP/1.1" 200 1412 "http://localhost:8080/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:20:49 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: get_terminal_commands, arguments: {'terminal_id': '876a86d4-36d6-481f-bdaa-e91962db72af', 'page': '1', 'limit': '10'}
+2025-08-22 13:20:49 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'terminal_id': '876a86d4-36d6-481f-bdaa-e91962db72af', 'page': '1', 'limit': '10'}
+2025-08-22 13:20:49 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminal_commands' schema: {}
+2025-08-22 13:20:49 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminal_commands' properties: {}
+2025-08-22 13:20:49 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'terminal_id': '876a86d4-36d6-481f-bdaa-e91962db72af', 'page': '1', 'limit': '10'}
+2025-08-22 13:20:49 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.046s
+2025-08-22 13:20:49 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:20:49 +0800] "POST /sse/tool/call HTTP/1.1" 200 1290 "http://localhost:8080/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:36:18 - root - INFO - 日志系统初始化完成 - 级别: INFO, 文件: logs/terminal_manager.log
+2025-08-22 13:36:18 - terminal_manager_server.terminal_mcp_server - INFO - 正在初始化 Terminal MCP Server...
+2025-08-22 13:36:18 - terminal_manager_server.terminal_mcp_server - INFO - Added tool: create_terminal
+2025-08-22 13:36:18 - terminal_manager_server.terminal_mcp_server - INFO - Replaced existing tool: create_terminal
+2025-08-22 13:36:18 - terminal_manager_server.terminal_mcp_server - INFO - 🔧 配置信息: storage_type=file, mongodb_uri=mongodb://admin:password@localhost:27017/terminal_manager?authSource=admin, data_dir=data, max_terminals=10, enable_cleanup=True, cleanup_threshold_minutes=20
+2025-08-22 13:36:18 - terminal_manager_server.terminal_mcp_server - INFO - 🛠️ 初始化工具列表 (共1个，全部支持流式输出):
+2025-08-22 13:36:18 - terminal_manager_server.terminal_mcp_server - INFO -   - create_terminal: 创建新的终端实例 (分块大小: 50)
+2025-08-22 13:36:18 - terminal_manager_server.terminal_mcp_server - INFO - Terminal MCP Server 初始化完成
+2025-08-22 13:36:18 - terminal_manager_server.terminal_mcp_server - INFO - MCP Server 'Terminal MCP Server' initialized with 1 tools and 0 resources
+2025-08-22 13:36:18 - mcp_framework.core.config.ServerConfigManager - INFO - Loaded server config from /Users/lilei/project/learn/mcp_servers/terminal_manager_server/dist/config/Terminal MCP Server_port_8080_server_config.json
+2025-08-22 13:36:18 - mcp_framework.server.http_server.MCPHTTPServer - INFO - MCP HTTP Server started on http://localhost:8080
+2025-08-22 13:36:18 - mcp_framework.server.http_server.MCPHTTPServer - INFO - Setup page: http://localhost:8080/setup
+2025-08-22 13:36:18 - mcp_framework.server.http_server.MCPHTTPServer - INFO - Test page: http://localhost:8080/test
+2025-08-22 13:36:19 - mcp_framework.server.middleware - INFO - GET /test - 200 - 0.002s
+2025-08-22 13:36:19 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:36:19 +0800] "GET /test HTTP/1.1" 200 38116 "http://localhost:8080/setup" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:36:19 - mcp_framework.server.middleware - INFO - GET /info - 200 - 0.000s
+2025-08-22 13:36:19 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:36:19 +0800] "GET /info HTTP/1.1" 200 742 "http://localhost:8080/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:36:20 - mcp_framework.server.middleware - INFO - POST /mcp - 200 - 0.000s
+2025-08-22 13:36:20 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:36:20 +0800] "POST /mcp HTTP/1.1" 200 649 "http://localhost:8080/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:36:20 - mcp_framework.server.middleware - INFO - POST /mcp - 200 - 0.000s
+2025-08-22 13:36:20 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:36:20 +0800] "POST /mcp HTTP/1.1" 200 385 "http://localhost:8080/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 13:36:20 - mcp_framework.server.middleware - INFO - GET /favicon.ico - 204 - 0.000s
+2025-08-22 13:36:20 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:36:20 +0800] "GET /favicon.ico HTTP/1.1" 204 270 "http://localhost:8080/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"

@@ -1,0 +1,6 @@
+# terminal-stream-server Dependencies
+# Generated on 2025-08-22 13:35:44
+
+psutil==5.9.5
+pymongo==4.5.0
+requests==2.31.0

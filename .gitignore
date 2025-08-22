@@ -1,0 +1,8 @@
+/build/*
+/config/*
+.idea/*
+/data/*
+/dist/*
+/*/build/*
+/*/dist/*
+/*/data/*

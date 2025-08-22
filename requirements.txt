@@ -1,0 +1,55 @@
+# MCP Servers Project Requirements
+# 项目依赖包列表
+
+# Core MCP Framework Dependencies
+# MCP框架核心依赖
+typing-extensions>=4.0.0
+
+# HTTP Client Libraries
+# HTTP客户端库
+aiohttp>=3.8.0
+requests>=2.28.0
+
+# AI/ML Libraries
+# AI/机器学习库
+openai>=1.35.0
+
+# Data Validation and Processing
+# 数据验证和处理
+pydantic>=2.0.0
+
+# Database Libraries
+# 数据库库
+pymongo>=4.0.0
+
+# System Monitoring
+# 系统监控
+psutil>=5.9.0
+
+# Development and Build Tools
+# 开发和构建工具
+PyInstaller>=6.0.0
+
+# Standard Library Extensions
+# 标准库扩展
+pathlib2>=2.3.0  # For older Python versions compatibility
+
+# Logging and Utilities
+# 日志和工具
+# Note: logging, json, asyncio, os, sys, uuid, datetime, threading, subprocess are built-in modules
+
+# Optional Dependencies for Enhanced Functionality
+# 可选依赖，用于增强功能
+# setuptools>=65.0.0  # For package management
+# wheel>=0.37.0       # For wheel building
+
+# Version constraints based on project requirements
+# 基于项目需求的版本约束
+# pymongo==4.5.0     # Specific version used in terminal server
+# psutil==5.9.5       # Specific version used in terminal server  
+# requests==2.31.0    # Specific version used in terminal server
+
+# Note: mcp_framework appears to be a custom/local framework
+# 注意：mcp_framework 似乎是自定义/本地框架
+# If it's available on PyPI, add:
+mcp_framework>=0.1.2
