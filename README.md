@@ -1,6 +1,7 @@
 # MCP Servers Project
 
 一个基于 Model Context Protocol (MCP) 的多功能服务器集合项目，提供文件读取、终端管理和AI专家服务等功能。
+使用框架mcp-framework: https://github.com/QuantGeekDev/mcp-framework
 
 ## 项目概述
 
