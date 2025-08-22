@@ -86,6 +86,11 @@ class ChatHistoryManager:
             else:
                 # 文件存储
                 await self._save_to_file(message)
+            
+            # 记录保存的消息类型
+            msg_type = metadata.get('type', 'normal') if metadata else 'normal'
+            logger.debug(f"📝 已保存消息: role={role}, type={msg_type}, content_len={len(content)}")
+            
         except Exception as e:
             logger.error(f"❌ 保存聊天记录失败: {e}")
 

@@ -28,22 +28,24 @@ class ExpertMCPServerAnnotated(EnhancedMCPServer):
     @property
     def setup_tools(self):
         """设置工具装饰器"""
-        
-        @self.streaming_tool(description="可查询当前工作文件的内容，并对其归纳总结")
+
+        @self.streaming_tool(
+            description="Intelligent Development Expert Assistant - Helps you control terminal and execute various development tasks including: file operations, code compilation & building, project management, environment configuration, debugging & testing, etc. Supports querying current workspace content and provides professional development advice and solutions")
         async def query_expert_stream(
-            question: Annotated[str, R("请输入要查询的内容，例如:build.py,或者问当前文件下有哪些文件等")]
+                question: Annotated[str, R(
+                    "Describe the development task you need to complete or the problem you're facing, e.g.: 'help me build the project', 'show current directory files', 'run tests', 'configure environment', etc.")]
         ) -> AsyncGenerator[str, None]:
-            """流式查询专家"""
+            """Intelligent Development Expert - Terminal Control Assistant"""
             if not question:
-                yield json.dumps({"error": "问题不能为空"}, ensure_ascii=False)
+                yield json.dumps({"error": "Question cannot be empty"}, ensure_ascii=False)
                 return
 
             try:
                 async for chunk in self.expert_service.ask_expert_stream(question):
-                    # 使用基类的标准化方法处理chunk
+                    # Use base class standardized method to process chunk
                     yield self._normalize_stream_chunk(chunk)
             except Exception as e:
-                # 使用基类的错误处理方法
+                # Use base class error handling method
                 yield await self._handle_stream_error("query_expert_stream", e)
 
         @self.resource(uri="config://expert", name="Expert Config", description="专家服务器配置信息")

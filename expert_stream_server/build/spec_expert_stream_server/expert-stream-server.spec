@@ -3,14 +3,14 @@ from PyInstaller.utils.hooks import collect_all
 
 datas = []
 binaries = []
-hiddenimports = ['pymongo', 'aiohttp', 'requests', 'openai', 'pydantic', 'mcp_framework', 'mcp_framework.core', 'mcp_framework.core.base', 'mcp_framework.core.decorators', 'mcp_framework.core.config', 'mcp_framework.core.launcher', 'mcp_framework.core.utils', 'mcp_framework.server', 'mcp_framework.server.http_server', 'mcp_framework.server.handlers', 'mcp_framework.server.middleware', 'mcp_framework.web', 'mcp_framework.web.config_page', 'mcp_framework.web.setup_page', 'mcp_framework.web.test_page', 'expert_MCP_server_annotated', 'expert_service', 'ai_client', 'ai_request_handler', 'mcp_tool_execute', 'chat_history_manager']
-tmp_ret = collect_all('pymongo')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
-tmp_ret = collect_all('aiohttp')
+hiddenimports = ['openai', 'requests', 'aiohttp', 'pymongo', 'pydantic', 'mcp_framework', 'mcp_framework.core', 'mcp_framework.core.base', 'mcp_framework.core.decorators', 'mcp_framework.core.config', 'mcp_framework.core.launcher', 'mcp_framework.core.utils', 'mcp_framework.server', 'mcp_framework.server.http_server', 'mcp_framework.server.handlers', 'mcp_framework.server.middleware', 'mcp_framework.web', 'mcp_framework.web.config_page', 'mcp_framework.web.setup_page', 'mcp_framework.web.test_page', 'expert_MCP_server_annotated', 'expert_service', 'ai_client', 'mcp_tool_execute', 'ai_request_handler', 'chat_history_manager']
+tmp_ret = collect_all('openai')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 tmp_ret = collect_all('requests')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
-tmp_ret = collect_all('openai')
+tmp_ret = collect_all('aiohttp')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+tmp_ret = collect_all('pymongo')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 tmp_ret = collect_all('pydantic')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]

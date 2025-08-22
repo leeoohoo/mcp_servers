@@ -112,8 +112,24 @@ class ExpertService:
         # 构建历史记录文本
         history_text = ""
         for msg in history_messages:
-            role = "用户" if msg['role'] == 'user' else "助手"
-            history_text += f"{role}: {msg['content']}\n"
+            role = msg['role']
+            content = msg['content']
+            metadata = msg.get('metadata', {})
+            msg_type = metadata.get('type', 'normal')
+            
+            if role == 'user':
+                role_name = "用户"
+            elif role == 'assistant':
+                if msg_type == 'tool_call':
+                    role_name = "助手(工具调用)"
+                else:
+                    role_name = "助手"
+            elif role == 'tool':
+                role_name = "工具执行结果"
+            else:
+                role_name = role
+                
+            history_text += f"{role_name}: {content}\n"
 
         # 构建总结请求
         summary_messages = [
@@ -285,6 +301,29 @@ class ExpertService:
                 logger.info(f"🌊 流式回调: {event_type} - {str(data)[:100]}..." if len(
                     str(data)) > 100 else f"🌊 流式回调: {event_type} - {data}")
                 stream_data.append({"type": event_type, "data": data})
+                
+                # 保存工具调用和工具结果到历史记录
+                if self.enable_history:
+                    if event_type == 'tool_call' and isinstance(data, list):
+                        # 保存工具调用信息
+                        for tool_call in data:
+                            if isinstance(tool_call, dict):
+                                tool_call_content = f"调用工具: {tool_call.get('function', {}).get('name', 'unknown')}\n参数: {tool_call.get('function', {}).get('arguments', '')}"
+                                import asyncio
+                                asyncio.create_task(self.chat_history.save_message(
+                                    conversation_id, "assistant", tool_call_content, 
+                                    {"type": "tool_call", "tool_call_id": tool_call.get('id')}
+                                ))
+                    elif event_type == 'tool_result' and isinstance(data, list):
+                        # 保存工具执行结果
+                        for tool_result in data:
+                            if isinstance(tool_result, dict):
+                                tool_result_content = f"工具 {tool_result.get('name', 'unknown')} 执行结果:\n{tool_result.get('content', '')}"
+                                import asyncio
+                                asyncio.create_task(self.chat_history.save_message(
+                                    conversation_id, "tool", tool_result_content,
+                                    {"type": "tool_result", "tool_call_id": tool_result.get('tool_call_id')}
+                                ))
 
             logger.info(f"🌊 创建流式AI客户端，会话ID: {conversation_id}")
 
