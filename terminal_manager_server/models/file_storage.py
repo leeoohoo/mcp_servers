@@ -131,27 +131,27 @@ class FileCollection:
         """更新单个文档"""
         with self.storage._lock:
             data = self.storage._read_file(self.file_path)
-            updated = False
+            modified_count = 0
             
             for i, item in enumerate(data):
                 if self._match_query(item, query):
                     if '$set' in update:
                         data[i].update(update['$set'])
-                    updated = True
+                    modified_count = 1
                     break
             
-            if not updated and upsert:
+            if modified_count == 0 and upsert:
                 # 创建新文档
                 new_doc = query.copy()
                 if '$set' in update:
                     new_doc.update(update['$set'])
                 data.append(new_doc)
-                updated = True
+                modified_count = 1
             
-            if updated:
+            if modified_count > 0:
                 self.storage._write_file(self.file_path, data)
             
-            return UpdateResult(updated)
+            return UpdateResult(modified_count > 0, modified_count)
     
     def delete_one(self, query: Dict) -> 'DeleteResult':
         """删除单个文档"""
@@ -225,8 +225,9 @@ class InsertResult:
 
 class UpdateResult:
     """更新结果"""
-    def __init__(self, acknowledged: bool):
+    def __init__(self, acknowledged: bool, modified_count: int = 0):
         self.acknowledged = acknowledged
+        self.modified_count = modified_count
 
 class DeleteResult:
     """删除结果"""
