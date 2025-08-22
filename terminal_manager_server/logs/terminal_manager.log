@@ -160,3 +160,604 @@ task: <Task cancelling name='Task-1' coro=<run_server() done, defined at mcp_fra
 2025-08-22 13:36:20 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:36:20 +0800] "POST /mcp HTTP/1.1" 200 385 "http://localhost:8080/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
 2025-08-22 13:36:20 - mcp_framework.server.middleware - INFO - GET /favicon.ico - 204 - 0.000s
 2025-08-22 13:36:20 - aiohttp.access - INFO - ::1 [22/Aug/2025:13:36:20 +0800] "GET /favicon.ico HTTP/1.1" 204 270 "http://localhost:8080/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 15:00:19 - root - INFO - 日志系统初始化完成 - 级别: INFO, 文件: logs/terminal_manager.log
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO - 正在初始化 Terminal MCP Server...
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO - Added tool: create_terminal
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO - Added tool: get_terminals
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO - Added tool: delete_terminal
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO - Added tool: execute_command
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO - Added tool: get_terminal_current_output
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO - Added tool: kill_command
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO - Added tool: get_terminal_commands
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO - Added tool: get_running_commands
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO - Replaced existing tool: create_terminal
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO - Replaced existing tool: get_terminals
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO - Replaced existing tool: delete_terminal
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO - Replaced existing tool: execute_command
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO - Replaced existing tool: get_terminal_current_output
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO - Replaced existing tool: kill_command
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO - Replaced existing tool: get_terminal_commands
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO - Replaced existing tool: get_running_commands
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO - 🔧 配置信息: storage_type=file, mongodb_uri=mongodb://admin:password@localhost:27017/terminal_manager?authSource=admin, data_dir=data, max_terminals=10, enable_cleanup=True, cleanup_threshold_minutes=20
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO - 🛠️ 初始化工具列表 (共8个，全部支持流式输出):
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO -   - create_terminal: Create a new terminal instance
+            
+            Features:
+            - Create a new terminal instance in the specified working directory
+            - Each terminal has a unique ID and can execute commands independently
+            - Support custom working directory, defaults to current directory
+            
+            Use Cases:
+            - When you need to execute commands in different directories
+            - When you need to run multiple tasks in parallel
+            - When you need to isolate command execution environments for different projects
+            
+            Examples:
+            1. Create default terminal: create_terminal()
+            2. Create terminal in specific directory: create_terminal("/path/to/project")
+            3. Create multiple terminals for different tasks
+             (分块大小: 50)
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO -   - get_terminals: Get terminal list and detailed information
+            
+            Features:
+            - Get detailed information about all terminals in the system
+            - Display status, working directory, running commands for each terminal
+            - Support filtering terminals by status
+            - Include recent command execution history
+            
+            Return Information:
+            - Terminal ID, status, creation time
+            - Current working directory
+            - Currently running commands (if any)
+            - Recent 5 command history
+            - Command execution statistics
+            
+            Use Cases:
+            - View status of all terminals in the system
+            - Monitor running tasks
+            - Manage and clean up terminal resources
+            
+            Examples:
+            1. Get all terminals: get_terminals()
+            2. View only active terminals: get_terminals("active")
+            3. View inactive terminals: get_terminals("inactive")
+             (分块大小: 50)
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO -   - delete_terminal: Delete specified terminal instance
+            
+            Features:
+            - Safely delete the specified terminal instance
+            - Automatically terminate running commands in the terminal
+            - Clean up related resources and data
+            - Release system resources
+            
+            Important Notes:
+            - Deletion operation is irreversible, use with caution
+            - If there are important running tasks in the terminal, stop them manually first
+            - The terminal ID will no longer be available after deletion
+            
+            Use Cases:
+            - Clean up terminals that are no longer needed
+            - Release system resources
+            - Reset terminal environment
+            
+            Examples:
+            1. Delete specific terminal: delete_terminal("terminal_123")
+            2. Batch cleanup: first use get_terminals to view, then delete one by one
+             (分块大小: 50)
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO -   - execute_command: Execute command in specified terminal
+            
+            Features:
+            - Execute shell commands in the specified terminal instance
+            - Support real-time output streaming
+            - Support different command execution types
+            - Support monitoring of long-running commands
+            
+            Command Type Description:
+            - normal: Regular commands like ls, cat, echo
+            - service: Service commands like starting web servers
+            - interactive: Interactive commands requiring user input
+            
+            Output Format:
+            - command_start: Command starts executing
+            - output: Real-time output content
+            - command_complete: Command execution completed
+            
+            Use Cases:
+            - Execute file operation commands
+            - Start development servers
+            - Run build scripts
+            - Execute test commands
+            
+            Examples:
+            1. Basic command: execute_command("term_001", "ls -la")
+            2. Start service: execute_command("term_001", "npm start", "service")
+            3. Quick execution: execute_command("term_001", "pwd", follow=False)
+             (分块大小: 50)
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO -   - get_terminal_current_output: Get real-time output of currently running command in terminal
+            
+            Features:
+            - Get real-time output of running commands in the specified terminal
+            - Support streaming output, real-time display of command execution results
+            - Can only get output of currently running commands
+            - Returns appropriate message if terminal has no running commands
+            
+            Output Content:
+            - Command standard output (stdout)
+            - Command error output (stderr)
+            - Command execution status changes
+            - Timestamp information
+            
+            Use Cases:
+            - Monitor progress of long-running tasks
+            - View server startup logs
+            - Track build process output
+            - Debug command execution issues
+            
+            Important Notes:
+            - Can only get output of currently running commands
+            - For historical command output, use get_terminal_commands
+            - Cannot get output if command has already finished
+            
+            Examples:
+            1. Monitor current command: get_terminal_current_output("term_001")
+            2. Quick status check: get_terminal_current_output("term_001", False)
+            3. Continuous service monitoring: get_terminal_current_output("term_001", True)
+             (分块大小: 50)
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO -   - kill_command: Force terminate the running command in the specified terminal
+            
+            Functionality:
+            - Force stop the currently running command in the specified terminal
+            - Send SIGTERM signal for graceful shutdown, then SIGKILL if it fails
+            - Clean up related processes and resources
+            - Mark command status as terminated
+            
+            Termination process:
+            1. Check if terminal has running commands
+            2. Send SIGTERM signal for graceful shutdown
+            3. Wait for a period, then send SIGKILL if process still exists
+            4. Clean up process resources and update status
+            
+            Use cases:
+            - Stop runaway long-running tasks
+            - Terminate stuck command processes
+            - Stop unnecessary services
+            - Clean up zombie processes
+            
+            Precautions:
+            - Force termination may cause data loss
+            - Recommend trying normal shutdown first (like Ctrl+C)
+            - Confirm before executing on important tasks
+            - Terminated commands cannot be recovered
+            
+            Examples:
+            1. Stop stuck build: kill_command("term_001")
+            2. Terminate runaway service: kill_command("terminal_abc123")
+            3. Clean zombie process: kill_command("term_service")
+             (分块大小: 50)
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO -   - get_terminal_commands: Get command history for the specified terminal
+            
+            Functionality:
+            - Get all command history executed in the specified terminal
+            - Support paginated queries to avoid returning too much data at once
+            - Sort by time in descending order, with newest commands first
+            - Include detailed execution information and status for commands
+            
+            Return information:
+            - Command ID and content
+            - Execution status (running/completed/failed/killed)
+            - Start and end times
+            - Execution duration
+            - Exit code
+            - Command type
+            
+            Use cases:
+            - View terminal operation history
+            - Analyze command execution status
+            - Debugging and troubleshooting
+            - Auditing and logging
+            
+            Pagination details:
+            - Default 20 records per page
+            - Page numbers start from 1
+            - Can adjust records per page as needed
+            
+            Examples:
+            1. View recent commands: get_terminal_commands("term_001")
+            2. View page 2: get_terminal_commands("term_001", 2)
+            3. 50 per page: get_terminal_commands("term_001", 1, 50)
+            4. View more history: get_terminal_commands("term_001", 3, 10)
+             (分块大小: 50)
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO -   - get_running_commands: Get list of currently running commands
+            
+            Functionality:
+            - Get information about all currently running commands in the system
+            - Support filtering by terminal ID, or view running commands from all terminals
+            - Real-time display of command execution status and progress
+            - Include detailed command information and statistics
+            
+            Return information:
+            - Command ID, content and type
+            - Associated terminal ID
+            - Start time and elapsed runtime
+            - Current execution status
+            - Process ID (if available)
+            
+            Use cases:
+            - Monitor all active tasks in the system
+            - Find running commands in specific terminals
+            - System resource usage analysis
+            - Task management and scheduling
+            
+            Filter options:
+            - No terminal_id specified: Get running commands from all terminals
+            - Specify terminal_id: Only get running commands from that terminal
+            
+            Examples:
+            1. View all running commands: get_running_commands()
+            2. View specific terminal: get_running_commands("term_001")
+            3. Monitor system status: Call periodically to view changes
+             (分块大小: 50)
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO - Terminal MCP Server 初始化完成
+2025-08-22 15:00:19 - terminal_manager_server.terminal_mcp_server - INFO - MCP Server 'Terminal MCP Server' initialized with 8 tools and 0 resources
+2025-08-22 15:00:19 - mcp_framework.core.config.ServerConfigManager - INFO - Loaded server config from /Users/lilei/project/learn/mcp_servers/terminal_manager_server/dist/config/Terminal MCP Server_port_8007_server_config.json
+2025-08-22 15:00:19 - mcp_framework.server.http_server.MCPHTTPServer - INFO - MCP HTTP Server started on http://localhost:8007
+2025-08-22 15:00:19 - mcp_framework.server.http_server.MCPHTTPServer - INFO - Setup page: http://localhost:8007/setup
+2025-08-22 15:00:19 - mcp_framework.server.http_server.MCPHTTPServer - INFO - Test page: http://localhost:8007/test
+2025-08-22 15:00:23 - mcp_framework.server.middleware - INFO - GET /setup - 200 - 0.000s
+2025-08-22 15:00:23 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:00:23 +0800] "GET /setup HTTP/1.1" 200 15303 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 15:00:24 - mcp_framework.server.middleware - INFO - GET /api/server/parameters - 200 - 0.000s
+2025-08-22 15:00:24 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:00:24 +0800] "GET /api/server/parameters HTTP/1.1" 200 2403 "http://localhost:8007/setup" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 15:00:24 - mcp_framework.server.middleware - INFO - GET /api/server/status - 200 - 0.000s
+2025-08-22 15:00:24 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:00:24 +0800] "GET /api/server/status HTTP/1.1" 200 437 "http://localhost:8007/setup" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 15:00:24 - mcp_framework.server.middleware - INFO - GET /favicon.ico - 204 - 0.000s
+2025-08-22 15:00:24 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:00:24 +0800] "GET /favicon.ico HTTP/1.1" 204 270 "http://localhost:8007/setup" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 15:00:28 - mcp_framework.core.config.ServerConfigManager - INFO - Saved server config to /Users/lilei/project/learn/mcp_servers/terminal_manager_server/dist/config/Terminal MCP Server_server_config.json
+2025-08-22 15:00:28 - terminal_manager_server.terminal_mcp_server - INFO - Server configured and saved: {'storage_type': 'file', 'mongodb_uri': 'mongodb://admin:password@localhost:27017/terminal_manager?authSource=admin', 'data_dir': 'data', 'max_terminals': 10, 'enable_cleanup': True, 'cleanup_threshold_minutes': 20}
+2025-08-22 15:00:28 - mcp_framework.server.middleware - INFO - POST /api/server/configure - 200 - 0.001s
+2025-08-22 15:00:28 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:00:28 +0800] "POST /api/server/configure HTTP/1.1" 200 391 "http://localhost:8007/setup" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 15:00:28 - mcp_framework.server.middleware - INFO - GET /api/server/status - 200 - 0.000s
+2025-08-22 15:00:28 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:00:28 +0800] "GET /api/server/status HTTP/1.1" 200 649 "http://localhost:8007/setup" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 15:00:31 - mcp_framework.server.middleware - INFO - GET /test - 200 - 0.001s
+2025-08-22 15:00:31 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:00:31 +0800] "GET /test HTTP/1.1" 200 38116 "http://localhost:8007/setup" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 15:00:31 - mcp_framework.server.middleware - INFO - GET /info - 200 - 0.000s
+2025-08-22 15:00:31 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:00:31 +0800] "GET /info HTTP/1.1" 200 893 "http://localhost:8007/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 15:00:31 - mcp_framework.server.middleware - INFO - POST /mcp - 200 - 0.000s
+2025-08-22 15:00:31 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:00:31 +0800] "POST /mcp HTTP/1.1" 200 23773 "http://localhost:8007/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 15:00:31 - mcp_framework.server.middleware - INFO - POST /mcp - 200 - 0.000s
+2025-08-22 15:00:31 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:00:31 +0800] "POST /mcp HTTP/1.1" 200 385 "http://localhost:8007/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 15:00:31 - mcp_framework.server.middleware - INFO - GET /favicon.ico - 204 - 0.000s
+2025-08-22 15:00:31 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:00:31 +0800] "GET /favicon.ico HTTP/1.1" 204 270 "http://localhost:8007/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 15:02:21 - mcp_framework.server.middleware - INFO - POST /mcp - 200 - 0.000s
+2025-08-22 15:02:21 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:02:21 +0800] "POST /mcp HTTP/1.1" 200 23794 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:04:53 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: get_terminals, arguments: {}
+2025-08-22 15:04:53 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {}
+2025-08-22 15:04:53 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminals' schema: {}
+2025-08-22 15:04:53 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminals' properties: {}
+2025-08-22 15:04:53 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {}
+2025-08-22 15:04:53 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.014s
+2025-08-22 15:04:53 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:04:53 +0800] "POST /sse/tool/call HTTP/1.1" 200 1390 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:04:55 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: delete_terminal, arguments: {'terminal_id': '876a86d4-36d6-481f-bdaa-e91962db72af'}
+2025-08-22 15:04:55 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'terminal_id': '876a86d4-36d6-481f-bdaa-e91962db72af'}
+2025-08-22 15:04:55 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'delete_terminal' schema: {}
+2025-08-22 15:04:55 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'delete_terminal' properties: {}
+2025-08-22 15:04:55 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'terminal_id': '876a86d4-36d6-481f-bdaa-e91962db72af'}
+2025-08-22 15:04:55 - terminal_manager_server.services.terminal_service - INFO - 删除终端成功: 876a86d4-36d6-481f-bdaa-e91962db72af
+2025-08-22 15:04:55 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.013s
+2025-08-22 15:04:55 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:04:55 +0800] "POST /sse/tool/call HTTP/1.1" 200 736 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:05:06 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: get_terminals, arguments: {'status_filter': 'all'}
+2025-08-22 15:05:06 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'status_filter': 'all'}
+2025-08-22 15:05:06 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminals' schema: {}
+2025-08-22 15:05:06 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminals' properties: {}
+2025-08-22 15:05:06 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'status_filter': 'all'}
+2025-08-22 15:05:06 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.013s
+2025-08-22 15:05:06 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:05:06 +0800] "POST /sse/tool/call HTTP/1.1" 200 657 "http://localhost:8007/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 15:05:44 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: get_terminals, arguments: {}
+2025-08-22 15:05:44 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {}
+2025-08-22 15:05:44 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminals' schema: {}
+2025-08-22 15:05:44 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminals' properties: {}
+2025-08-22 15:05:44 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {}
+2025-08-22 15:05:44 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.013s
+2025-08-22 15:05:44 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:05:44 +0800] "POST /sse/tool/call HTTP/1.1" 200 635 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:05:45 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: create_terminal, arguments: {}
+2025-08-22 15:05:45 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {}
+2025-08-22 15:05:45 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'create_terminal' schema: {}
+2025-08-22 15:05:45 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'create_terminal' properties: {}
+2025-08-22 15:05:45 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {}
+2025-08-22 15:05:45 - terminal_manager_server.services.terminal_service - INFO - 创建终端成功: 7b626a02-5e3a-4de8-b31b-c74081adff07
+2025-08-22 15:05:45 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.013s
+2025-08-22 15:05:45 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:05:45 +0800] "POST /sse/tool/call HTTP/1.1" 200 814 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:05:47 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: execute_command, arguments: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07', 'command': 'node --version && npm --version', 'follow': False}
+2025-08-22 15:05:47 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07', 'command': 'node --version && npm --version', 'follow': False}
+2025-08-22 15:05:47 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'execute_command' schema: {}
+2025-08-22 15:05:47 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'execute_command' properties: {}
+2025-08-22 15:05:47 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07', 'command': 'node --version && npm --version', 'follow': False}
+2025-08-22 15:05:47 - terminal_manager_server.services.command_service - INFO - 开始执行命令: 8c2080ec-488d-43e4-8b25-33a02f2ae9d2 - node --version && npm --version
+2025-08-22 15:05:47 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 8c2080ec-488d-43e4-8b25-33a02f2ae9d2, 序号: 1, 类型: system, 内容: 开始执行命令: node --version && npm --version...
+2025-08-22 15:05:47 - terminal_manager_server.services.process_manager - INFO - 注册进程: 8c2080ec-488d-43e4-8b25-33a02f2ae9d2 -> PID 41353
+2025-08-22 15:05:47 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.037s
+2025-08-22 15:05:47 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:05:47 +0800] "POST /sse/tool/call HTTP/1.1" 200 1312 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:05:47 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 8c2080ec-488d-43e4-8b25-33a02f2ae9d2, 序号: 2, 类型: stdout, 内容: v20.18.3...
+2025-08-22 15:05:47 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 8c2080ec-488d-43e4-8b25-33a02f2ae9d2, 序号: 3, 类型: stdout, 内容: 10.8.2...
+2025-08-22 15:05:47 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 8c2080ec-488d-43e4-8b25-33a02f2ae9d2, 序号: 4, 类型: system, 内容: 命令执行完成，退出码: 0...
+2025-08-22 15:05:47 - terminal_manager_server.services.process_manager - INFO - 注销进程: 8c2080ec-488d-43e4-8b25-33a02f2ae9d2 -> PID 41353
+2025-08-22 15:05:47 - terminal_manager_server.services.command_service - INFO - 命令执行完成: 8c2080ec-488d-43e4-8b25-33a02f2ae9d2 - 退出码: 0
+2025-08-22 15:05:48 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: get_terminal_current_output, arguments: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07', 'follow': False}
+2025-08-22 15:05:48 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07', 'follow': False}
+2025-08-22 15:05:48 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminal_current_output' schema: {}
+2025-08-22 15:05:48 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminal_current_output' properties: {}
+2025-08-22 15:05:48 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07', 'follow': False}
+2025-08-22 15:05:48 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.013s
+2025-08-22 15:05:48 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:05:48 +0800] "POST /sse/tool/call HTTP/1.1" 200 783 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:05:50 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: get_terminal_commands, arguments: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07', 'limit': 5}
+2025-08-22 15:05:50 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07', 'limit': 5}
+2025-08-22 15:05:50 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminal_commands' schema: {}
+2025-08-22 15:05:50 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminal_commands' properties: {}
+2025-08-22 15:05:50 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07', 'limit': 5}
+2025-08-22 15:05:50 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.036s
+2025-08-22 15:05:50 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:05:50 +0800] "POST /sse/tool/call HTTP/1.1" 200 1072 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:05:51 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: execute_command, arguments: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07', 'command': 'npx create-react-app my-react-app', 'follow': True}
+2025-08-22 15:05:51 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07', 'command': 'npx create-react-app my-react-app', 'follow': True}
+2025-08-22 15:05:51 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'execute_command' schema: {}
+2025-08-22 15:05:51 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'execute_command' properties: {}
+2025-08-22 15:05:51 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07', 'command': 'npx create-react-app my-react-app', 'follow': True}
+2025-08-22 15:05:51 - terminal_manager_server.services.command_service - INFO - 开始执行命令: 9439ec00-e9e5-4c89-9cc3-8c1478a79046 - npx create-react-app my-react-app
+2025-08-22 15:05:51 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 9439ec00-e9e5-4c89-9cc3-8c1478a79046, 序号: 1, 类型: system, 内容: 开始执行命令: npx create-react-app my-react-app...
+2025-08-22 15:05:51 - terminal_manager_server.services.process_manager - INFO - 注册进程: 9439ec00-e9e5-4c89-9cc3-8c1478a79046 -> PID 41362
+2025-08-22 15:05:52 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 9439ec00-e9e5-4c89-9cc3-8c1478a79046, 序号: 2, 类型: stdout, 内容: Need to install the following packages:...
+2025-08-22 15:05:52 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 9439ec00-e9e5-4c89-9cc3-8c1478a79046, 序号: 3, 类型: stdout, 内容: create-react-app@5.1.0...
+2025-08-22 15:06:45 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: get_terminals, arguments: {'status_filter': 'all'}
+2025-08-22 15:06:45 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'status_filter': 'all'}
+2025-08-22 15:06:45 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminals' schema: {}
+2025-08-22 15:06:45 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminals' properties: {}
+2025-08-22 15:06:45 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'status_filter': 'all'}
+2025-08-22 15:06:45 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.014s
+2025-08-22 15:06:45 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:06:45 +0800] "POST /sse/tool/call HTTP/1.1" 200 1651 "http://localhost:8007/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 15:07:53 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: get_terminal_current_output, arguments: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07', 'follow': True}
+2025-08-22 15:07:53 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07', 'follow': True}
+2025-08-22 15:07:53 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminal_current_output' schema: {}
+2025-08-22 15:07:53 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminal_current_output' properties: {}
+2025-08-22 15:07:53 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07', 'follow': True}
+2025-08-22 15:09:46 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: get_running_commands, arguments: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07'}
+2025-08-22 15:09:46 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07'}
+2025-08-22 15:09:46 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_running_commands' schema: {}
+2025-08-22 15:09:46 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_running_commands' properties: {}
+2025-08-22 15:09:46 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07'}
+2025-08-22 15:09:46 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.036s
+2025-08-22 15:09:46 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:09:46 +0800] "POST /sse/tool/call HTTP/1.1" 200 1148 "http://localhost:8007/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 15:09:54 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: get_running_commands, arguments: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07'}
+2025-08-22 15:09:54 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07'}
+2025-08-22 15:09:54 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_running_commands' schema: {}
+2025-08-22 15:09:54 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_running_commands' properties: {}
+2025-08-22 15:09:54 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07'}
+2025-08-22 15:09:54 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.036s
+2025-08-22 15:09:54 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:09:54 +0800] "POST /sse/tool/call HTTP/1.1" 200 1148 "http://localhost:8007/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 15:09:55 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: get_running_commands, arguments: {}
+2025-08-22 15:09:55 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {}
+2025-08-22 15:09:55 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_running_commands' schema: {}
+2025-08-22 15:09:55 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_running_commands' properties: {}
+2025-08-22 15:09:55 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {}
+2025-08-22 15:09:55 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.023s
+2025-08-22 15:09:55 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:09:55 +0800] "POST /sse/tool/call HTTP/1.1" 200 747 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:09:56 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: get_terminal_commands, arguments: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07', 'limit': 2}
+2025-08-22 15:09:56 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07', 'limit': 2}
+2025-08-22 15:09:56 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminal_commands' schema: {}
+2025-08-22 15:09:56 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminal_commands' properties: {}
+2025-08-22 15:09:56 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07', 'limit': 2}
+2025-08-22 15:09:56 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.046s
+2025-08-22 15:09:56 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:09:56 +0800] "POST /sse/tool/call HTTP/1.1" 200 1303 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:09:58 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: execute_command, arguments: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07', 'command': 'ls -la', 'follow': False}
+2025-08-22 15:09:58 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07', 'command': 'ls -la', 'follow': False}
+2025-08-22 15:09:58 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'execute_command' schema: {}
+2025-08-22 15:09:58 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'execute_command' properties: {}
+2025-08-22 15:09:58 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07', 'command': 'ls -la', 'follow': False}
+2025-08-22 15:09:58 - terminal_manager_server.services.command_service - WARNING - 终端有正在运行的命令: 7b626a02-5e3a-4de8-b31b-c74081adff07
+2025-08-22 15:09:58 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.013s
+2025-08-22 15:09:58 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:09:58 +0800] "POST /sse/tool/call HTTP/1.1" 200 784 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:10:00 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: kill_command, arguments: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07'}
+2025-08-22 15:10:00 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07'}
+2025-08-22 15:10:00 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'kill_command' schema: {}
+2025-08-22 15:10:00 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'kill_command' properties: {}
+2025-08-22 15:10:00 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07'}
+2025-08-22 15:10:00 - terminal_manager_server.services.process_manager - INFO - 发送SIGTERM信号到进程: 41362
+2025-08-22 15:10:00 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 9439ec00-e9e5-4c89-9cc3-8c1478a79046, 序号: 4, 类型: stdout, 内容: Ok to proceed? (y) ...
+2025-08-22 15:10:00 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 9439ec00-e9e5-4c89-9cc3-8c1478a79046, 序号: 5, 类型: system, 内容: 命令执行失败，退出码: -15...
+2025-08-22 15:10:00 - terminal_manager_server.services.process_manager - INFO - 注销进程: 9439ec00-e9e5-4c89-9cc3-8c1478a79046 -> PID 41362
+2025-08-22 15:10:00 - terminal_manager_server.services.command_service - INFO - 命令执行完成: 9439ec00-e9e5-4c89-9cc3-8c1478a79046 - 退出码: -15
+2025-08-22 15:10:00 - terminal_manager_server.services.process_manager - INFO - 进程已优雅结束: 41362
+2025-08-22 15:10:00 - terminal_manager_server.services.command_service - INFO - 成功终止进程: 41362
+2025-08-22 15:10:00 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 9439ec00-e9e5-4c89-9cc3-8c1478a79046, 序号: 6, 类型: system, 内容: 命令被用户终止...
+2025-08-22 15:10:00 - terminal_manager_server.services.command_service - INFO - 命令已终止: 9439ec00-e9e5-4c89-9cc3-8c1478a79046
+2025-08-22 15:10:00 - mcp_framework.server.handlers.SSEHandler - WARNING - 发送SSE事件失败: Cannot write to closing transport
+2025-08-22 15:10:00 - mcp_framework.server.handlers.SSEHandler - WARNING - 发送SSE事件失败: Cannot write to closing transport
+2025-08-22 15:10:00 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 248.724s
+2025-08-22 15:10:00 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:05:51 +0800] "POST /sse/tool/call HTTP/1.1" 200 0 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:10:00 - mcp_framework.server.handlers.SSEHandler - WARNING - 发送SSE事件失败: Cannot write to closing transport
+2025-08-22 15:10:00 - mcp_framework.server.handlers.SSEHandler - WARNING - 发送SSE事件失败: Cannot write to closing transport
+2025-08-22 15:10:00 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 126.576s
+2025-08-22 15:10:00 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:07:53 +0800] "POST /sse/tool/call HTTP/1.1" 200 0 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:10:00 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.124s
+2025-08-22 15:10:00 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:10:00 +0800] "POST /sse/tool/call HTTP/1.1" 200 815 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:10:02 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: execute_command, arguments: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07', 'command': 'npm create vite@latest my-react-app -- --template react', 'follow': True}
+2025-08-22 15:10:02 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07', 'command': 'npm create vite@latest my-react-app -- --template react', 'follow': True}
+2025-08-22 15:10:02 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'execute_command' schema: {}
+2025-08-22 15:10:02 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'execute_command' properties: {}
+2025-08-22 15:10:02 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07', 'command': 'npm create vite@latest my-react-app -- --template react', 'follow': True}
+2025-08-22 15:10:02 - terminal_manager_server.services.command_service - INFO - 开始执行命令: 2bc39501-239c-4615-a430-2e6833680e93 - npm create vite@latest my-react-app -- --template react
+2025-08-22 15:10:02 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 2bc39501-239c-4615-a430-2e6833680e93, 序号: 1, 类型: system, 内容: 开始执行命令: npm create vite@latest my-react-app -- --t...
+2025-08-22 15:10:02 - terminal_manager_server.services.process_manager - INFO - 注册进程: 2bc39501-239c-4615-a430-2e6833680e93 -> PID 41688
+2025-08-22 15:10:02 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 2bc39501-239c-4615-a430-2e6833680e93, 序号: 2, 类型: stdout, 内容: Need to install the following packages:...
+2025-08-22 15:10:02 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 2bc39501-239c-4615-a430-2e6833680e93, 序号: 3, 类型: stdout, 内容: create-vite@7.1.1...
+2025-08-22 15:10:47 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: get_terminals, arguments: {}
+2025-08-22 15:10:47 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {}
+2025-08-22 15:10:47 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminals' schema: {}
+2025-08-22 15:10:47 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminals' properties: {}
+2025-08-22 15:10:47 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {}
+2025-08-22 15:10:47 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.013s
+2025-08-22 15:10:47 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:10:47 +0800] "POST /sse/tool/call HTTP/1.1" 200 1952 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:10:49 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: get_terminal_current_output, arguments: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07'}
+2025-08-22 15:10:49 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07'}
+2025-08-22 15:10:49 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminal_current_output' schema: {}
+2025-08-22 15:10:49 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminal_current_output' properties: {}
+2025-08-22 15:10:49 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07'}
+2025-08-22 15:13:44 - mcp_framework.server.middleware - INFO - POST /mcp - 200 - 0.000s
+2025-08-22 15:13:44 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:13:44 +0800] "POST /mcp HTTP/1.1" 200 23794 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:13:52 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: get_terminals, arguments: {}
+2025-08-22 15:13:52 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {}
+2025-08-22 15:13:52 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminals' schema: {}
+2025-08-22 15:13:52 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminals' properties: {}
+2025-08-22 15:13:52 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {}
+2025-08-22 15:13:52 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.012s
+2025-08-22 15:13:52 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:13:52 +0800] "POST /sse/tool/call HTTP/1.1" 200 1952 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:13:55 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: delete_terminal, arguments: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07'}
+2025-08-22 15:13:55 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07'}
+2025-08-22 15:13:55 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'delete_terminal' schema: {}
+2025-08-22 15:13:55 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'delete_terminal' properties: {}
+2025-08-22 15:13:55 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07'}
+2025-08-22 15:13:55 - terminal_manager_server.services.terminal_service - WARNING - 终端有正在运行的命令，无法删除: 7b626a02-5e3a-4de8-b31b-c74081adff07
+2025-08-22 15:13:55 - terminal_manager_server.services.terminal_service - ERROR - 删除终端异常: TERMINAL_BUSY:2bc39501-239c-4615-a430-2e6833680e93
+2025-08-22 15:13:55 - terminal_manager_server.terminal_mcp_server - ERROR - 删除终端异常: TERMINAL_BUSY:2bc39501-239c-4615-a430-2e6833680e93
+2025-08-22 15:13:55 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.013s
+2025-08-22 15:13:55 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:13:55 +0800] "POST /sse/tool/call HTTP/1.1" 200 761 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:13:56 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: create_terminal, arguments: {'working_directory': '/Users/lilei/project/learn/test_project'}
+2025-08-22 15:13:56 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'working_directory': '/Users/lilei/project/learn/test_project'}
+2025-08-22 15:13:56 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'create_terminal' schema: {}
+2025-08-22 15:13:56 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'create_terminal' properties: {}
+2025-08-22 15:13:56 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'working_directory': '/Users/lilei/project/learn/test_project'}
+2025-08-22 15:13:56 - terminal_manager_server.services.terminal_service - INFO - 创建终端成功: 3579744c-8967-45a8-b585-4378a68f2d1f
+2025-08-22 15:13:56 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.014s
+2025-08-22 15:13:56 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:13:56 +0800] "POST /sse/tool/call HTTP/1.1" 200 853 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:14:12 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: get_terminals, arguments: {'status_filter': 'all'}
+2025-08-22 15:14:12 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'status_filter': 'all'}
+2025-08-22 15:14:12 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminals' schema: {}
+2025-08-22 15:14:12 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminals' properties: {}
+2025-08-22 15:14:12 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'status_filter': 'all'}
+2025-08-22 15:14:12 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.015s
+2025-08-22 15:14:12 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:14:12 +0800] "POST /sse/tool/call HTTP/1.1" 200 2257 "http://localhost:8007/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 15:15:36 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: get_running_commands, arguments: {}
+2025-08-22 15:15:36 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {}
+2025-08-22 15:15:36 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_running_commands' schema: {}
+2025-08-22 15:15:36 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_running_commands' properties: {}
+2025-08-22 15:15:36 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {}
+2025-08-22 15:15:36 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.023s
+2025-08-22 15:15:36 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:15:36 +0800] "POST /sse/tool/call HTTP/1.1" 200 747 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:15:37 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: get_terminals, arguments: {}
+2025-08-22 15:15:37 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {}
+2025-08-22 15:15:37 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminals' schema: {}
+2025-08-22 15:15:37 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminals' properties: {}
+2025-08-22 15:15:37 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {}
+2025-08-22 15:15:37 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.012s
+2025-08-22 15:15:37 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:15:37 +0800] "POST /sse/tool/call HTTP/1.1" 200 2235 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:15:39 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: kill_command, arguments: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07'}
+2025-08-22 15:15:39 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07'}
+2025-08-22 15:15:39 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'kill_command' schema: {}
+2025-08-22 15:15:39 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'kill_command' properties: {}
+2025-08-22 15:15:39 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07'}
+2025-08-22 15:15:39 - terminal_manager_server.services.process_manager - INFO - 发送SIGTERM信号到进程: 41688
+2025-08-22 15:15:39 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 2bc39501-239c-4615-a430-2e6833680e93, 序号: 4, 类型: stdout, 内容: Ok to proceed? (y) ...
+2025-08-22 15:15:39 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 2bc39501-239c-4615-a430-2e6833680e93, 序号: 5, 类型: system, 内容: 命令执行失败，退出码: -15...
+2025-08-22 15:15:39 - terminal_manager_server.services.process_manager - INFO - 注销进程: 2bc39501-239c-4615-a430-2e6833680e93 -> PID 41688
+2025-08-22 15:15:39 - terminal_manager_server.services.command_service - INFO - 命令执行完成: 2bc39501-239c-4615-a430-2e6833680e93 - 退出码: -15
+2025-08-22 15:15:39 - terminal_manager_server.services.process_manager - INFO - 进程已优雅结束: 41688
+2025-08-22 15:15:39 - terminal_manager_server.services.command_service - INFO - 成功终止进程: 41688
+2025-08-22 15:15:39 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 2bc39501-239c-4615-a430-2e6833680e93, 序号: 6, 类型: system, 内容: 命令被用户终止...
+2025-08-22 15:15:39 - terminal_manager_server.services.command_service - INFO - 命令已终止: 2bc39501-239c-4615-a430-2e6833680e93
+2025-08-22 15:15:39 - mcp_framework.server.handlers.SSEHandler - WARNING - 发送SSE事件失败: Cannot write to closing transport
+2025-08-22 15:15:39 - mcp_framework.server.handlers.SSEHandler - WARNING - 发送SSE事件失败: Cannot write to closing transport
+2025-08-22 15:15:39 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 290.514s
+2025-08-22 15:15:39 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:10:49 +0800] "POST /sse/tool/call HTTP/1.1" 200 0 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:15:39 - mcp_framework.server.handlers.SSEHandler - WARNING - 发送SSE事件失败: Cannot write to closing transport
+2025-08-22 15:15:39 - mcp_framework.server.handlers.SSEHandler - WARNING - 发送SSE事件失败: Cannot write to closing transport
+2025-08-22 15:15:39 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 337.758s
+2025-08-22 15:15:39 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:10:02 +0800] "POST /sse/tool/call HTTP/1.1" 200 0 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:15:39 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.122s
+2025-08-22 15:15:39 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:15:39 +0800] "POST /sse/tool/call HTTP/1.1" 200 837 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:15:41 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: delete_terminal, arguments: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07'}
+2025-08-22 15:15:41 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07'}
+2025-08-22 15:15:41 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'delete_terminal' schema: {}
+2025-08-22 15:15:41 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'delete_terminal' properties: {}
+2025-08-22 15:15:41 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'terminal_id': '7b626a02-5e3a-4de8-b31b-c74081adff07'}
+2025-08-22 15:15:41 - terminal_manager_server.services.terminal_service - INFO - 删除终端成功: 7b626a02-5e3a-4de8-b31b-c74081adff07
+2025-08-22 15:15:41 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.012s
+2025-08-22 15:15:41 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:15:41 +0800] "POST /sse/tool/call HTTP/1.1" 200 736 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:15:54 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: get_terminals, arguments: {'status_filter': 'all'}
+2025-08-22 15:15:54 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'status_filter': 'all'}
+2025-08-22 15:15:54 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminals' schema: {}
+2025-08-22 15:15:54 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminals' properties: {}
+2025-08-22 15:15:54 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'status_filter': 'all'}
+2025-08-22 15:15:54 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.013s
+2025-08-22 15:15:54 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:15:54 +0800] "POST /sse/tool/call HTTP/1.1" 200 938 "http://localhost:8007/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-22 15:16:26 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: create_terminal, arguments: {'working_directory': '/Users/lilei/project/learn/test_project'}
+2025-08-22 15:16:26 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'working_directory': '/Users/lilei/project/learn/test_project'}
+2025-08-22 15:16:26 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'create_terminal' schema: {}
+2025-08-22 15:16:26 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'create_terminal' properties: {}
+2025-08-22 15:16:26 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'working_directory': '/Users/lilei/project/learn/test_project'}
+2025-08-22 15:16:26 - terminal_manager_server.services.terminal_service - INFO - 创建终端成功: 22406e17-997e-4564-acc2-5e57bd746dfb
+2025-08-22 15:16:26 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.013s
+2025-08-22 15:16:26 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:16:26 +0800] "POST /sse/tool/call HTTP/1.1" 200 853 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:16:28 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: execute_command, arguments: {'terminal_id': '22406e17-997e-4564-acc2-5e57bd746dfb', 'command': 'ls -la', 'command_type': 'normal', 'follow': False}
+2025-08-22 15:16:28 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'terminal_id': '22406e17-997e-4564-acc2-5e57bd746dfb', 'command': 'ls -la', 'command_type': 'normal', 'follow': False}
+2025-08-22 15:16:28 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'execute_command' schema: {}
+2025-08-22 15:16:28 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'execute_command' properties: {}
+2025-08-22 15:16:28 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'terminal_id': '22406e17-997e-4564-acc2-5e57bd746dfb', 'command': 'ls -la', 'command_type': 'normal', 'follow': False}
+2025-08-22 15:16:28 - terminal_manager_server.services.command_service - INFO - 开始执行命令: 28a4fb60-f2c7-49a4-a0bd-785efd89a227 - ls -la
+2025-08-22 15:16:28 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 28a4fb60-f2c7-49a4-a0bd-785efd89a227, 序号: 1, 类型: system, 内容: 开始执行命令: ls -la...
+2025-08-22 15:16:28 - terminal_manager_server.services.process_manager - INFO - 注册进程: 28a4fb60-f2c7-49a4-a0bd-785efd89a227 -> PID 42141
+2025-08-22 15:16:28 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 28a4fb60-f2c7-49a4-a0bd-785efd89a227, 序号: 2, 类型: stdout, 内容: total 0...
+2025-08-22 15:16:28 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 28a4fb60-f2c7-49a4-a0bd-785efd89a227, 序号: 3, 类型: stdout, 内容: drwxr-xr-x   2 lilei  staff   64 Aug 22 14:47 ....
+2025-08-22 15:16:28 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 28a4fb60-f2c7-49a4-a0bd-785efd89a227, 序号: 4, 类型: stdout, 内容: drwxr-xr-x  22 lilei  staff  704 Aug 22 14:47 .....
+2025-08-22 15:16:28 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 28a4fb60-f2c7-49a4-a0bd-785efd89a227, 序号: 5, 类型: system, 内容: 命令执行完成，退出码: 0...
+2025-08-22 15:16:28 - terminal_manager_server.services.process_manager - INFO - 注销进程: 28a4fb60-f2c7-49a4-a0bd-785efd89a227 -> PID 42141
+2025-08-22 15:16:28 - terminal_manager_server.services.command_service - INFO - 命令执行完成: 28a4fb60-f2c7-49a4-a0bd-785efd89a227 - 退出码: 0
+2025-08-22 15:16:28 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.037s
+2025-08-22 15:16:28 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:16:28 +0800] "POST /sse/tool/call HTTP/1.1" 200 1262 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:16:29 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: get_terminal_current_output, arguments: {'terminal_id': '22406e17-997e-4564-acc2-5e57bd746dfb', 'follow': False}
+2025-08-22 15:16:29 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'terminal_id': '22406e17-997e-4564-acc2-5e57bd746dfb', 'follow': False}
+2025-08-22 15:16:29 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminal_current_output' schema: {}
+2025-08-22 15:16:29 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminal_current_output' properties: {}
+2025-08-22 15:16:29 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'terminal_id': '22406e17-997e-4564-acc2-5e57bd746dfb', 'follow': False}
+2025-08-22 15:16:29 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.013s
+2025-08-22 15:16:29 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:16:29 +0800] "POST /sse/tool/call HTTP/1.1" 200 783 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:16:30 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: get_terminal_commands, arguments: {'terminal_id': '22406e17-997e-4564-acc2-5e57bd746dfb', 'limit': 5}
+2025-08-22 15:16:30 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'terminal_id': '22406e17-997e-4564-acc2-5e57bd746dfb', 'limit': 5}
+2025-08-22 15:16:30 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminal_commands' schema: {}
+2025-08-22 15:16:30 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminal_commands' properties: {}
+2025-08-22 15:16:30 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'terminal_id': '22406e17-997e-4564-acc2-5e57bd746dfb', 'limit': 5}
+2025-08-22 15:16:30 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.035s
+2025-08-22 15:16:30 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:16:30 +0800] "POST /sse/tool/call HTTP/1.1" 200 1047 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:16:32 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: execute_command, arguments: {'terminal_id': '22406e17-997e-4564-acc2-5e57bd746dfb', 'command': 'cnpm --version', 'command_type': 'normal', 'follow': False}
+2025-08-22 15:16:32 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'terminal_id': '22406e17-997e-4564-acc2-5e57bd746dfb', 'command': 'cnpm --version', 'command_type': 'normal', 'follow': False}
+2025-08-22 15:16:32 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'execute_command' schema: {}
+2025-08-22 15:16:32 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'execute_command' properties: {}
+2025-08-22 15:16:32 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'terminal_id': '22406e17-997e-4564-acc2-5e57bd746dfb', 'command': 'cnpm --version', 'command_type': 'normal', 'follow': False}
+2025-08-22 15:16:32 - terminal_manager_server.services.command_service - INFO - 开始执行命令: e9c2bda4-2ca2-43c2-b02d-edaf921470c9 - cnpm --version
+2025-08-22 15:16:32 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: e9c2bda4-2ca2-43c2-b02d-edaf921470c9, 序号: 1, 类型: system, 内容: 开始执行命令: cnpm --version...
+2025-08-22 15:16:32 - terminal_manager_server.services.process_manager - INFO - 注册进程: e9c2bda4-2ca2-43c2-b02d-edaf921470c9 -> PID 42148
+2025-08-22 15:16:32 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.038s
+2025-08-22 15:16:32 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:16:32 +0800] "POST /sse/tool/call HTTP/1.1" 200 1287 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:16:32 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: e9c2bda4-2ca2-43c2-b02d-edaf921470c9, 序号: 2, 类型: stdout, 内容: cnpm@9.4.0 (/usr/local/lib/node_modules/cnpm/lib/p...
+2025-08-22 15:16:32 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: e9c2bda4-2ca2-43c2-b02d-edaf921470c9, 序号: 3, 类型: stdout, 内容: npm@9.9.2 (/usr/local/lib/node_modules/cnpm/node_m...
+2025-08-22 15:16:32 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: e9c2bda4-2ca2-43c2-b02d-edaf921470c9, 序号: 4, 类型: stdout, 内容: node@20.18.3 (/usr/local/bin/node)...
+2025-08-22 15:16:32 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: e9c2bda4-2ca2-43c2-b02d-edaf921470c9, 序号: 5, 类型: stdout, 内容: npminstall@7.12.0 (/usr/local/lib/node_modules/cnp...
+2025-08-22 15:16:32 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: e9c2bda4-2ca2-43c2-b02d-edaf921470c9, 序号: 6, 类型: stdout, 内容: prefix=/Users/lilei/.npm-global ...
+2025-08-22 15:16:32 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: e9c2bda4-2ca2-43c2-b02d-edaf921470c9, 序号: 7, 类型: stdout, 内容: darwin arm64 24.6.0 ...
+2025-08-22 15:16:32 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: e9c2bda4-2ca2-43c2-b02d-edaf921470c9, 序号: 8, 类型: stdout, 内容: registry=https://registry.npmmirror.com...
+2025-08-22 15:16:32 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: e9c2bda4-2ca2-43c2-b02d-edaf921470c9, 序号: 9, 类型: system, 内容: 命令执行完成，退出码: 0...
+2025-08-22 15:16:32 - terminal_manager_server.services.process_manager - INFO - 注销进程: e9c2bda4-2ca2-43c2-b02d-edaf921470c9 -> PID 42148
+2025-08-22 15:16:32 - terminal_manager_server.services.command_service - INFO - 命令执行完成: e9c2bda4-2ca2-43c2-b02d-edaf921470c9 - 退出码: 0
+2025-08-22 15:16:34 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: get_terminal_commands, arguments: {'limit': 2, 'terminal_id': '22406e17-997e-4564-acc2-5e57bd746dfb'}
+2025-08-22 15:16:34 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'limit': 2, 'terminal_id': '22406e17-997e-4564-acc2-5e57bd746dfb'}
+2025-08-22 15:16:34 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminal_commands' schema: {}
+2025-08-22 15:16:34 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'get_terminal_commands' properties: {}
+2025-08-22 15:16:34 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'limit': 2, 'terminal_id': '22406e17-997e-4564-acc2-5e57bd746dfb'}
+2025-08-22 15:16:34 - mcp_framework.server.middleware - INFO - POST /sse/tool/call - 200 - 0.047s
+2025-08-22 15:16:34 - aiohttp.access - INFO - ::1 [22/Aug/2025:15:16:34 +0800] "POST /sse/tool/call HTTP/1.1" 200 1282 "-" "Python/3.12 aiohttp/3.12.15"
+2025-08-22 15:16:36 - mcp_framework.server.handlers.SSEHandler - INFO - SSE tool call - tool_name: execute_command, arguments: {'terminal_id': '22406e17-997e-4564-acc2-5e57bd746dfb', 'command': 'cnpm create react-app my-react-app', 'command_type': 'normal', 'follow': True}
+2025-08-22 15:16:36 - mcp_framework.server.handlers.SSEHandler - INFO - Before coercion: {'terminal_id': '22406e17-997e-4564-acc2-5e57bd746dfb', 'command': 'cnpm create react-app my-react-app', 'command_type': 'normal', 'follow': True}
+2025-08-22 15:16:36 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'execute_command' schema: {}
+2025-08-22 15:16:36 - mcp_framework.server.handlers.SSEHandler - INFO - Tool 'execute_command' properties: {}
+2025-08-22 15:16:36 - mcp_framework.server.handlers.SSEHandler - INFO - After coercion: {'terminal_id': '22406e17-997e-4564-acc2-5e57bd746dfb', 'command': 'cnpm create react-app my-react-app', 'command_type': 'normal', 'follow': True}
+2025-08-22 15:16:36 - terminal_manager_server.services.command_service - INFO - 开始执行命令: 989bd975-58a8-44f4-adf4-a289abb6f1ad - cnpm create react-app my-react-app
+2025-08-22 15:16:36 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 989bd975-58a8-44f4-adf4-a289abb6f1ad, 序号: 1, 类型: system, 内容: 开始执行命令: cnpm create react-app my-react-app...
+2025-08-22 15:16:36 - terminal_manager_server.services.process_manager - INFO - 注册进程: 989bd975-58a8-44f4-adf4-a289abb6f1ad -> PID 42155
+2025-08-22 15:16:37 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 989bd975-58a8-44f4-adf4-a289abb6f1ad, 序号: 2, 类型: stdout, 内容: Need to install the following packages:...
+2025-08-22 15:16:37 - terminal_manager_server.services.command_service - INFO - 保存输出成功 - 命令ID: 989bd975-58a8-44f4-adf4-a289abb6f1ad, 序号: 3, 类型: stdout, 内容: create-react-app@5.1.0...

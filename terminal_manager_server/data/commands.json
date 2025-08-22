@@ -1,26 +1,38 @@
 [
   {
-    "command_id": "3f59a7ff-4747-4e10-9045-b8e502a9cf52",
-    "terminal_id": "876a86d4-36d6-481f-bdaa-e91962db72af",
-    "command": "ls",
+    "command_id": "28a4fb60-f2c7-49a4-a0bd-785efd89a227",
+    "terminal_id": "22406e17-997e-4564-acc2-5e57bd746dfb",
+    "command": "ls -la",
     "status": "completed",
-    "start_time": "2025-08-22T05:07:36.024552",
-    "end_time": "2025-08-22T05:07:36.046275",
+    "start_time": "2025-08-22T07:16:28.015670",
+    "end_time": "2025-08-22T07:16:28.037604",
     "exit_code": 0,
-    "pid": 9199,
+    "pid": 42141,
     "command_type": "normal",
-    "created_at": "2025-08-22T05:07:36.024557"
+    "created_at": "2025-08-22T07:16:28.015673"
   },
   {
-    "command_id": "0bc28fb2-1c21-4409-9a0c-085857a10480",
-    "terminal_id": "876a86d4-36d6-481f-bdaa-e91962db72af",
-    "command": "ls -a",
+    "command_id": "e9c2bda4-2ca2-43c2-b02d-edaf921470c9",
+    "terminal_id": "22406e17-997e-4564-acc2-5e57bd746dfb",
+    "command": "cnpm --version",
     "status": "completed",
-    "start_time": "2025-08-22T05:07:45.681505",
-    "end_time": "2025-08-22T05:07:45.697591",
+    "start_time": "2025-08-22T07:16:32.678858",
+    "end_time": "2025-08-22T07:16:32.874518",
     "exit_code": 0,
-    "pid": 9301,
+    "pid": 42148,
     "command_type": "normal",
-    "created_at": "2025-08-22T05:07:45.681507"
+    "created_at": "2025-08-22T07:16:32.678861"
+  },
+  {
+    "command_id": "989bd975-58a8-44f4-adf4-a289abb6f1ad",
+    "terminal_id": "22406e17-997e-4564-acc2-5e57bd746dfb",
+    "command": "cnpm create react-app my-react-app",
+    "status": "running",
+    "start_time": "2025-08-22T07:16:36.561473",
+    "end_time": null,
+    "exit_code": null,
+    "pid": 42155,
+    "command_type": "normal",
+    "created_at": "2025-08-22T07:16:36.561474"
   }
 ]

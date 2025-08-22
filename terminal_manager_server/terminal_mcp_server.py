@@ -134,12 +134,39 @@ class TerminalMCPServer(EnhancedMCPServer):
     def setup_tools(self):
         """注册所有工具"""
         
-        # 终端管理工具
+        # Terminal Management Tools
         @self.streaming_tool(
-            description="创建新的终端实例"
+            description="""Create a new terminal instance
+            
+            Features:
+            - Create a new terminal instance in the specified working directory
+            - Each terminal has a unique ID and can execute commands independently
+            - Support custom working directory, defaults to current directory
+            
+            Use Cases:
+            - When you need to execute commands in different directories
+            - When you need to run multiple tasks in parallel
+            - When you need to isolate command execution environments for different projects
+            
+            Examples:
+            1. Create default terminal: create_terminal()
+            2. Create terminal in specific directory: create_terminal("/path/to/project")
+            3. Create multiple terminals for different tasks
+            """
         )
         async def create_terminal(
-            working_directory: Annotated[str, O("工作目录路径")] = None
+            working_directory: Annotated[str, O("""Working directory path
+            
+            Description: Initial working directory for the new terminal
+            - If not specified, will use the current working directory
+            - Path must exist and be accessible
+            - Supports both relative and absolute paths
+            
+            Examples:
+            - "/Users/username/project" (absolute path)
+            - "./src" (relative path)
+            - "~/Documents" (user directory)
+            """)] = None
         ) -> AsyncGenerator[str, None]:
             """创建新终端"""
             try:
@@ -174,10 +201,49 @@ class TerminalMCPServer(EnhancedMCPServer):
                 }, ensure_ascii=False)
         
         @self.streaming_tool(
-            description="获取所有终端列表"
+            description="""Get terminal list and detailed information
+            
+            Features:
+            - Get detailed information about all terminals in the system
+            - Display status, working directory, running commands for each terminal
+            - Support filtering terminals by status
+            - Include recent command execution history
+            
+            Return Information:
+            - Terminal ID, status, creation time
+            - Current working directory
+            - Currently running commands (if any)
+            - Recent 5 command history
+            - Command execution statistics
+            
+            Use Cases:
+            - View status of all terminals in the system
+            - Monitor running tasks
+            - Manage and clean up terminal resources
+            
+            Examples:
+            1. Get all terminals: get_terminals()
+            2. View only active terminals: get_terminals("active")
+            3. View inactive terminals: get_terminals("inactive")
+            """
         )
         async def get_terminals(
-            status_filter: Annotated[str, O("状态过滤器 (active/inactive/all)")] = "all"
+            status_filter: Annotated[str, O("""Terminal status filter
+            
+            Available values:
+            - "all": Show all terminals (default)
+            - "active": Show only active terminals
+            - "inactive": Show only inactive terminals
+            
+            Description:
+            - active: Terminal is running normally and can execute commands
+            - inactive: Terminal has stopped or encountered an error
+            
+            Examples:
+            - "all" - View all terminal statuses
+            - "active" - Focus only on available terminals
+            - "inactive" - Find terminals that need cleanup
+            """)] = "all"
         ) -> AsyncGenerator[str, None]:
             """获取终端列表"""
             try:
@@ -246,10 +312,46 @@ class TerminalMCPServer(EnhancedMCPServer):
                 }, ensure_ascii=False)
         
         @self.streaming_tool(
-            description="删除指定的终端"
+            description="""Delete specified terminal instance
+            
+            Features:
+            - Safely delete the specified terminal instance
+            - Automatically terminate running commands in the terminal
+            - Clean up related resources and data
+            - Release system resources
+            
+            Important Notes:
+            - Deletion operation is irreversible, use with caution
+            - If there are important running tasks in the terminal, stop them manually first
+            - The terminal ID will no longer be available after deletion
+            
+            Use Cases:
+            - Clean up terminals that are no longer needed
+            - Release system resources
+            - Reset terminal environment
+            
+            Examples:
+            1. Delete specific terminal: delete_terminal("terminal_123")
+            2. Batch cleanup: first use get_terminals to view, then delete one by one
+            """
         )
         async def delete_terminal(
-            terminal_id: Annotated[str, R("终端ID")]
+            terminal_id: Annotated[str, R("""Terminal ID to delete
+            
+            Description:
+            - Must be a valid terminal ID
+            - Available terminal ID list can be obtained through get_terminals()
+            - Format is usually a string, such as "terminal_123"
+            
+            How to obtain:
+            1. Use get_terminals() to view all terminals
+            2. Find the terminal_id to delete from the returned results
+            3. Copy the complete ID string
+            
+            Examples:
+            - "terminal_abc123" - Standard terminal ID
+            - "term_001" - Short ID format
+            """)]
         ) -> AsyncGenerator[str, None]:
             """删除终端"""
             try:
@@ -274,13 +376,113 @@ class TerminalMCPServer(EnhancedMCPServer):
                 }, ensure_ascii=False)
         
         @self.streaming_tool(
-            description="在指定终端中执行命令"
+            description="""Execute command in specified terminal
+            
+            Features:
+            - Execute shell commands in the specified terminal instance
+            - Support real-time output streaming
+            - Support different command execution types
+            - Support monitoring of long-running commands
+            
+            Command Type Description:
+            - normal: Regular commands like ls, cat, echo
+            - service: Service commands like starting web servers
+            - interactive: Interactive commands requiring user input
+            
+            Output Format:
+            - command_start: Command starts executing
+            - output: Real-time output content
+            - command_complete: Command execution completed
+            
+            Use Cases:
+            - Execute file operation commands
+            - Start development servers
+            - Run build scripts
+            - Execute test commands
+            
+            Examples:
+            1. Basic command: execute_command("term_001", "ls -la")
+            2. Start service: execute_command("term_001", "npm start", "service")
+            3. Quick execution: execute_command("term_001", "pwd", follow=False)
+            """
         )
         async def execute_command(
-            terminal_id: Annotated[str, R("终端ID")],
-            command: Annotated[str, R("要执行的命令")],
-            command_type: Annotated[str, O("命令类型 (normal/service/interactive)")] = "normal",
-            follow: Annotated[bool, O("是否持续跟踪输出")] = True
+            terminal_id: Annotated[str, R("""Target terminal ID
+            
+            Description:
+            - Must be an existing active terminal ID
+            - Available terminal list can be obtained through get_terminals()
+            - Terminal must be in available state
+            
+            How to obtain:
+            1. First call get_terminals() to view available terminals
+            2. Select terminals with active status
+            3. Copy the corresponding terminal_id
+            
+            Examples:
+            - "terminal_abc123" - Standard format
+            - "term_001" - Short format
+            """)],
+            command: Annotated[str, R("""Shell command to execute
+            
+            Description:
+            - Supports all standard shell commands
+            - Can include parameters and options
+            - Supports pipe and redirection operations
+            - Pay attention to command security
+            
+            Common command examples:
+            - "ls -la" - List detailed file information
+            - "cd /path/to/dir" - Change directory
+            - "npm install" - Install dependencies
+            - "python script.py" - Run Python script
+            - "git status" - Check Git status
+            - "ps aux | grep node" - Find processes
+            
+            Important notes:
+            - Avoid executing dangerous commands (like rm -rf /)
+            - For long-running commands, recommend setting command_type to service
+            """)],
+            command_type: Annotated[str, O("""Command execution type
+            
+            Available values:
+            - "normal": Regular command (default)
+            - "service": Service command
+            - "interactive": Interactive command
+            
+            Type description:
+            - normal: General shell commands that will end after execution
+            - service: Long-running services like web servers
+            - interactive: Commands requiring user interaction input
+            
+            Selection recommendations:
+            - File operations, view commands → normal
+            - Start servers, monitor processes → service
+            - Need password input, confirmation → interactive
+            
+            Examples:
+            - "normal" - ls, cat, echo
+            - "service" - npm start, python -m http.server
+            - "interactive" - ssh, sudo, mysql
+            """)] = "normal",
+            follow: Annotated[bool, O("""Whether to continuously track output
+            
+            Description:
+            - True: Continuously monitor command output until completion (default)
+            - False: Only get current output snapshot and return immediately
+            
+            Use cases:
+            - True: Suitable for commands that need to see the complete execution process
+            - False: Suitable for quick status check commands
+            
+            Note:
+            - For service type commands, recommend setting to True
+            - For quick query commands, can set to False for better efficiency
+            
+            示例：
+            - True - 监控构建过程、服务启动
+            - False - 快速查看当前目录、文件内容
+            """)] = True
         ) -> AsyncGenerator[str, None]:
             """执行命令"""
             try:
@@ -403,11 +605,80 @@ class TerminalMCPServer(EnhancedMCPServer):
 
         
         @self.streaming_tool(
-            description="通过终端ID获取当前运行命令的实时输出"
+            description="""Get real-time output of currently running command in terminal
+            
+            Features:
+            - Get real-time output of running commands in the specified terminal
+            - Support streaming output, real-time display of command execution results
+            - Can only get output of currently running commands
+            - Returns appropriate message if terminal has no running commands
+            
+            Output Content:
+            - Command standard output (stdout)
+            - Command error output (stderr)
+            - Command execution status changes
+            - Timestamp information
+            
+            Use Cases:
+            - Monitor progress of long-running tasks
+            - View server startup logs
+            - Track build process output
+            - Debug command execution issues
+            
+            Important Notes:
+            - Can only get output of currently running commands
+            - For historical command output, use get_terminal_commands
+            - Cannot get output if command has already finished
+            
+            Examples:
+            1. Monitor current command: get_terminal_current_output("term_001")
+            2. Quick status check: get_terminal_current_output("term_001", False)
+            3. Continuous service monitoring: get_terminal_current_output("term_001", True)
+            """
         )
         async def get_terminal_current_output(
-            terminal_id: Annotated[str, R("终端ID")],
-            follow: Annotated[bool, O("是否持续跟踪输出")] = True
+            terminal_id: Annotated[str, R("""Target terminal ID
+            
+            Description:
+            - Must be an existing terminal ID
+            - Terminal must have running commands
+            - Can use get_terminals() to see which terminals have running commands
+            
+            How to obtain:
+            1. Use get_terminals() to view terminal list
+            2. Find terminals with "is_running" as true
+            3. Use the corresponding terminal_id
+            
+            Examples:
+            - "terminal_abc123" - Terminal with running commands
+            - "term_001" - Terminal executing tasks
+            
+            Tips:
+            - Will receive NO_RUNNING_COMMAND error if terminal has no running commands
+            - Recommend checking terminal status before calling this function
+            """)],
+            follow: Annotated[bool, O("""Whether to continuously track output
+            
+            Description:
+            - True: Continuously monitor until command completion (default)
+            - False: Get current output snapshot and return immediately
+            
+            Selection recommendations:
+            - True: Suitable for monitoring long-running tasks
+            - False: Suitable for quick status checks
+            
+            Behavior differences:
+            - True: Will continuously output new content until command ends
+            - False: Only returns currently available output content
+            
+            Use cases:
+            - True: Monitor builds, tests, service startups
+            - False: Quick progress checks
+            
+            Examples:
+            - True - Complete monitoring of npm install process
+            - False - Quick check of current download progress
+            """)] = True
         ) -> AsyncGenerator[str, None]:
             """获取终端当前运行命令的实时输出"""
             try:
@@ -509,10 +780,67 @@ class TerminalMCPServer(EnhancedMCPServer):
                 }, ensure_ascii=False)
         
         @self.streaming_tool(
-            description="终止指定终端当前正在执行的命令"
+            description="""Force terminate the running command in the specified terminal
+            
+            Functionality:
+            - Force stop the currently running command in the specified terminal
+            - Send SIGTERM signal for graceful shutdown, then SIGKILL if it fails
+            - Clean up related processes and resources
+            - Mark command status as terminated
+            
+            Termination process:
+            1. Check if terminal has running commands
+            2. Send SIGTERM signal for graceful shutdown
+            3. Wait for a period, then send SIGKILL if process still exists
+            4. Clean up process resources and update status
+            
+            Use cases:
+            - Stop runaway long-running tasks
+            - Terminate stuck command processes
+            - Stop unnecessary services
+            - Clean up zombie processes
+            
+            Precautions:
+            - Force termination may cause data loss
+            - Recommend trying normal shutdown first (like Ctrl+C)
+            - Confirm before executing on important tasks
+            - Terminated commands cannot be recovered
+            
+            Examples:
+            1. Stop stuck build: kill_command("term_001")
+            2. Terminate runaway service: kill_command("terminal_abc123")
+            3. Clean zombie process: kill_command("term_service")
+            """
         )
         async def kill_command(
-            terminal_id: Annotated[str, R("终端ID")]
+            terminal_id: Annotated[str, R("""Target terminal ID
+            
+            Description:
+            - Must be an existing terminal ID
+            - Terminal must have running commands
+            - Can use get_terminals() to see which terminals have running commands
+            
+            How to obtain:
+            1. Use get_terminals() to view terminal list
+            2. Find terminals with "is_running" as true
+            3. Confirm the command content to terminate
+            4. Use the corresponding terminal_id
+            
+            Safety checks:
+            - Confirm terminal ID is correct
+            - Confirm terminating the target command
+            - Consider the impact of command termination
+            
+            Examples:
+            - "terminal_abc123" - Terminal with stuck commands
+            - "term_build" - Terminal needing build stop
+            - "term_server" - Terminal needing service stop
+            
+            Error cases:
+            - TERMINAL_NOT_FOUND: Terminal does not exist
+            - NO_RUNNING_COMMAND: No running commands
+            - KILL_FAILED: Termination operation failed
+            """)]
         ) -> AsyncGenerator[str, None]:
             """终止终端当前运行的命令"""
             try:
@@ -566,12 +894,106 @@ class TerminalMCPServer(EnhancedMCPServer):
                 }, ensure_ascii=False)
         
         @self.streaming_tool(
-            description="获取终端命令历史"
+            description="""Get command history for the specified terminal
+            
+            Functionality:
+            - Get all command history executed in the specified terminal
+            - Support paginated queries to avoid returning too much data at once
+            - Sort by time in descending order, with newest commands first
+            - Include detailed execution information and status for commands
+            
+            Return information:
+            - Command ID and content
+            - Execution status (running/completed/failed/killed)
+            - Start and end times
+            - Execution duration
+            - Exit code
+            - Command type
+            
+            Use cases:
+            - View terminal operation history
+            - Analyze command execution status
+            - Debugging and troubleshooting
+            - Auditing and logging
+            
+            Pagination details:
+            - Default 20 records per page
+            - Page numbers start from 1
+            - Can adjust records per page as needed
+            
+            Examples:
+            1. View recent commands: get_terminal_commands("term_001")
+            2. View page 2: get_terminal_commands("term_001", 2)
+            3. 50 per page: get_terminal_commands("term_001", 1, 50)
+            4. View more history: get_terminal_commands("term_001", 3, 10)
+            """
         )
         async def get_terminal_commands(
-            terminal_id: Annotated[str, R("终端ID")],
-            page: Annotated[int, O("页码")] = 1,
-            limit: Annotated[int, O("每页数量")] = 10
+            terminal_id: Annotated[str, R("""Target terminal ID
+            
+            Description:
+            - Must be an existing terminal ID
+            - Can be active or inactive terminals
+            - Get available terminal ID list through get_terminals()
+            
+            How to obtain:
+            1. Use get_terminals() to view all terminals
+            2. Select the terminal to view history
+            3. Copy the corresponding terminal_id
+            
+            Examples:
+            - "terminal_abc123" - Standard terminal ID
+            - "term_001" - Short format ID
+            - "build_terminal" - Descriptive ID
+            
+            Notes:
+            - History records may still exist even if terminal is deleted
+            - Will return TERMINAL_NOT_FOUND error if terminal doesn't exist
+            """)],
+            page: Annotated[int, O("""Page number
+            
+            Description:
+            - Specify the page number to retrieve, starting from 1
+            - Used for paginated queries to avoid returning too much data at once
+            - Default is page 1 (newest commands)
+            
+            Pagination logic:
+            - Page 1: Newest command records
+            - Page 2: Earlier command records
+            - And so on...
+            
+            Usage recommendations:
+            - Usually start viewing from page 1
+            - Increase page number to view earlier history
+            - Combine with limit parameter to control records per page
+            
+            Examples:
+            - 1 - View newest commands
+            - 2 - View second page history
+            - 5 - View earlier command history
+            """)] = 1,
+            limit: Annotated[int, O("""Number of commands to display per page
+            
+            Description:
+            - Control the number of command records returned per page
+            - Default is 20 records
+            - Recommended range: 5-100 records
+            
+            Selection recommendations:
+            - 10-20 records: Suitable for quick browsing
+            - 50-100 records: Suitable for detailed analysis
+            - 5-10 records: Suitable for mobile devices or simple viewing
+            
+            Performance considerations:
+            - Larger numbers take longer to return
+            - Recommend setting based on actual needs
+            - For large history records, recommend using smaller limit
+            
+            Examples:
+            - 10 - Quick view of recent 10 commands
+            - 50 - Detailed analysis of recent 50 commands
+            - 100 - Comprehensive view of command history
+            """)] = 20
         ) -> AsyncGenerator[str, None]:
             """获取终端命令历史"""
             try:
@@ -633,10 +1055,63 @@ class TerminalMCPServer(EnhancedMCPServer):
                 }, ensure_ascii=False)
         
         @self.streaming_tool(
-            description="获取正在运行的命令列表"
+            description="""Get list of currently running commands
+            
+            Functionality:
+            - Get information about all currently running commands in the system
+            - Support filtering by terminal ID, or view running commands from all terminals
+            - Real-time display of command execution status and progress
+            - Include detailed command information and statistics
+            
+            Return information:
+            - Command ID, content and type
+            - Associated terminal ID
+            - Start time and elapsed runtime
+            - Current execution status
+            - Process ID (if available)
+            
+            Use cases:
+            - Monitor all active tasks in the system
+            - Find running commands in specific terminals
+            - System resource usage analysis
+            - Task management and scheduling
+            
+            Filter options:
+            - No terminal_id specified: Get running commands from all terminals
+            - Specify terminal_id: Only get running commands from that terminal
+            
+            Examples:
+            1. View all running commands: get_running_commands()
+            2. View specific terminal: get_running_commands("term_001")
+            3. Monitor system status: Call periodically to view changes
+            """
         )
         async def get_running_commands(
-            terminal_id: Annotated[str, O("终端ID (可选，不指定则获取所有)")] = None
+            terminal_id: Annotated[str, O("""Terminal ID filter (optional)
+            
+            Description:
+            - Optional parameter to filter running commands from specific terminal
+            - If not specified, will return running commands from all terminals
+            - Must be a valid terminal ID
+            
+            Usage:
+            - Leave empty or don't pass: Get running commands from all terminals
+            - Specify ID: Only get running commands from that terminal
+            
+            How to get terminal ID:
+            1. Use get_terminals() to view available terminals
+            2. Select target terminal ID from results
+            3. Copy the complete terminal_id string
+            
+            Examples:
+            - None or "" - View running commands from all terminals
+            - "terminal_abc123" - Only view commands from specified terminal
+            - "build_term" - Only view commands from build terminal
+            
+            Application scenarios:
+            - Not specified: Global monitoring of all tasks
+            - Specified: Focus on monitoring tasks from specific terminal
+            """)] = None
         ) -> AsyncGenerator[str, None]:
             """获取正在运行的命令"""
             try:
