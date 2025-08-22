@@ -151,16 +151,20 @@ python expert_stream_server.py
 
 项目支持使用 PyInstaller 构建独立的可执行文件：
 
-```bash
-# 构建文件读取服务器
-pyinstaller build/spec_file_reader_server/file-reader-server.spec
+# 基础构建命令
+mcp-build                           # 构建所有发现的服务器
+mcp-build --server my_server.py     # 构建特定服务器
+mcp-build --list                    # 列出所有可构建的服务器
 
-# 构建终端管理服务器
-pyinstaller terminal_manager_server/build/spec_terminal_stream_server/terminal-stream-server.spec
+# 构建选项
+mcp-build --no-clean               # 跳过清理构建目录
+mcp-build --no-test                # 跳过测试阶段
+mcp-build --no-onefile             # 构建为目录而非单文件
+mcp-build --include-source         # 在分发包中包含源代码
+mcp-build --clean-only             # 只清理构建目录，不进行构建
 
-# 构建AI专家服务器
-pyinstaller expert_stream_server/build/spec_expert_stream_server/expert-stream-server.spec
-```
+# 组合使用
+mcp-build --server weather_server.py --no-test --include-source
 
 构建产物将生成在 `dist/` 目录下。
 
