@@ -171,6 +171,15 @@ jobs:
         if [ -f "dist/file-reader-server/file-reader-server${{ matrix.executable_suffix }}" ]; then
           mv "dist/file-reader-server/file-reader-server${{ matrix.executable_suffix }}" "dist/file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
           rm -rf "dist/file-reader-server"
+        else
+          # 处理带时间戳的文件名
+          for file in dist/file-reader-server/file-reader-server*${{ matrix.executable_suffix }}; do
+            if [ -f "$file" ]; then
+              mv "$file" "dist/file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+              break
+            fi
+          done
+          rm -rf "dist/file-reader-server"
         fi
       shell: bash
 
@@ -190,6 +199,15 @@ jobs:
         if [ -f "dist/terminal-manager-server/terminal-stream-server${{ matrix.executable_suffix }}" ]; then
           mv "dist/terminal-manager-server/terminal-stream-server${{ matrix.executable_suffix }}" "dist/terminal-manager-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
           rm -rf "dist/terminal-manager-server"
+        else
+          # 处理带时间戳的文件名
+          for file in dist/terminal-manager-server/terminal-stream-server*${{ matrix.executable_suffix }}; do
+            if [ -f "$file" ]; then
+              mv "$file" "dist/terminal-manager-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+              break
+            fi
+          done
+          rm -rf "dist/terminal-manager-server"
         fi
       shell: bash
 
@@ -208,6 +226,15 @@ jobs:
         # 重命名并移动到最终位置
         if [ -f "dist/expert-stream-server/expert-stream-server${{ matrix.executable_suffix }}" ]; then
           mv "dist/expert-stream-server/expert-stream-server${{ matrix.executable_suffix }}" "dist/expert-stream-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+          rm -rf "dist/expert-stream-server"
+        else
+          # 处理带时间戳的文件名
+          for file in dist/expert-stream-server/expert-stream-server*${{ matrix.executable_suffix }}; do
+            if [ -f "$file" ]; then
+              mv "$file" "dist/expert-stream-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+              break
+            fi
+          done
           rm -rf "dist/expert-stream-server"
         fi
       shell: bash
@@ -307,7 +334,16 @@ jobs:
           fi
         else
           # Linux 和 macOS 使用 tar.gz，只打包服务器文件
-          tar -czf ../${{ matrix.archive_name }}.tar.gz *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}
+          # 使用更灵活的文件匹配，处理可能的时间戳
+          files_to_pack=$(ls *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }} 2>/dev/null || echo "")
+          if [ -n "$files_to_pack" ]; then
+            tar -czf ../${{ matrix.archive_name }}.tar.gz $files_to_pack
+          else
+            echo "❌ 没有找到匹配的文件: *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+            echo "当前目录文件:"
+            ls -la
+            exit 1
+          fi
         fi
         
         cd ..
