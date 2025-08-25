@@ -47,7 +47,7 @@ jobs:
           - os: windows-latest
             platform: windows
             arch: x86_64
-            mcp_platform: windows
+            mcp_platform: native  # Windows 使用本地构建，避免 Docker 问题
             executable_suffix: .exe
             archive_format: zip
             archive_name: mcp-servers-windows-x86_64
@@ -82,9 +82,9 @@ jobs:
         python-version: ${{ env.PYTHON_VERSION }}
         cache: 'pip'
 
-    # 3. 设置 Docker（仅 Linux 和 Windows 需要）
+    # 3. 设置 Docker（仅 Linux 需要，Windows 跳过 Docker）
     - name: Set up Docker Buildx
-      if: matrix.mcp_platform != 'native'
+      if: matrix.mcp_platform == 'linux'
       uses: docker/setup-buildx-action@v3
 
     # 4. 显示系统信息
@@ -170,6 +170,11 @@ jobs:
         if [ -d "dist" ]; then
           echo "当前 dist 目录内容:"
           ls -la dist/
+          
+          # 修复权限问题（Linux Docker 构建时需要）
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            sudo chown -R $USER:$USER dist/ || echo "权限修复完成"
+          fi
           
           # 重命名可执行文件以包含平台信息
           cd dist
