@@ -138,6 +138,7 @@ jobs:
       if: hashFiles('file_reader_server/file_reader_server.py') != ''
       run: |
         echo "🔨 构建文件读取服务器..."
+        echo "平台: ${{ matrix.mcp_platform }}, 架构: ${{ matrix.arch }}"
         python -m mcp_framework.build --platform ${{ matrix.mcp_platform }} --server file_reader_server/file_reader_server.py --no-test
       shell: bash
 
@@ -146,6 +147,7 @@ jobs:
       if: hashFiles('terminal_manager_server/terminal_stream_server.py') != ''
       run: |
         echo "🔨 构建终端管理服务器..."
+        echo "平台: ${{ matrix.mcp_platform }}, 架构: ${{ matrix.arch }}"
         python -m mcp_framework.build --platform ${{ matrix.mcp_platform }} --server terminal_manager_server/terminal_stream_server.py --no-test
       shell: bash
 
@@ -154,6 +156,7 @@ jobs:
       if: hashFiles('expert_stream_server/expert_stream_server.py') != ''
       run: |
         echo "🔨 构建AI专家服务器..."
+        echo "平台: ${{ matrix.mcp_platform }}, 架构: ${{ matrix.arch }}"
         python -m mcp_framework.build --platform ${{ matrix.mcp_platform }} --server expert_stream_server/expert_stream_server.py --no-test
       shell: bash
 
