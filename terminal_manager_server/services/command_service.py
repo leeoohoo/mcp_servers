@@ -126,6 +126,41 @@ class CommandService:
             self.logger.error(f"获取命令输出流异常: {e}")
             yield f"data: {{\"error\": \"获取输出流异常: {str(e)}\", \"command_id\": \"{command_id}\"}}\n\n"
     
+    def send_input_to_command(self, command_id: str, input_text: str) -> bool:
+        """向运行中的交互式命令发送输入"""
+        try:
+            command = Command.find_by_id(command_id)
+            if not command:
+                self.logger.error(f"命令不存在: {command_id}")
+                return False
+            
+            if command.status != 'running':
+                self.logger.warning(f"命令未在运行中: {command_id} - {command.status}")
+                return False
+            
+            if command.command_type != 'interactive':
+                self.logger.warning(f"命令不是交互式命令: {command_id} - {command.command_type}")
+                return False
+            
+            # 检查进程是否支持交互式输入
+            if not self.process_manager.is_interactive_process(command_id):
+                self.logger.error(f"进程不支持交互式输入: {command_id}")
+                return False
+            
+            # 使用ProcessManager发送输入
+            success = self.process_manager.send_input_to_process(command_id, input_text)
+            
+            if success:
+                # 记录输入到输出日志
+                self._add_output(command_id, f">>> {input_text}", 'stdin')
+                self.logger.info(f"成功发送输入到命令: {command_id} - {input_text}")
+            
+            return success
+            
+        except Exception as e:
+            self.logger.error(f"发送输入异常: {e}")
+            return False
+    
     def kill_command(self, command_id: str) -> bool:
         """终止命令"""
         try:
@@ -277,6 +312,9 @@ class CommandService:
                 'LINES': '24'
             })
             
+            # 根据命令类型决定是否需要stdin
+            stdin_pipe = subprocess.PIPE if command.command_type == 'interactive' else None
+            
             # 执行命令
             process = subprocess.Popen(
                 command.command,
@@ -285,6 +323,7 @@ class CommandService:
                 env=env,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                stdin=stdin_pipe,
                 text=True,
                 bufsize=1,
                 universal_newlines=True

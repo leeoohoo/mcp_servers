@@ -780,6 +780,127 @@ class TerminalMCPServer(EnhancedMCPServer):
                 }, ensure_ascii=False)
         
         @self.streaming_tool(
+            description="""Send input to a running interactive command
+            
+            Functionality:
+            - Send user input to currently running interactive commands
+            - Support commands that require user interaction like npx create-react-app
+            - Only works with commands marked as 'interactive' type
+            - Input is sent to the command's stdin stream
+            
+            Interactive Command Examples:
+            - npx create-react-app my-app (requires project name, template selection)
+            - npm init (requires package information)
+            - git commit (requires commit message in editor)
+            - ssh connections (requires password/confirmation)
+            - sudo commands (requires password)
+            
+            Usage Process:
+            1. Execute command with command_type='interactive'
+            2. Monitor command output for prompts
+            3. Use this tool to send appropriate responses
+            4. Repeat as needed for multiple prompts
+            
+            Input Format:
+            - Plain text input (newline will be automatically added)
+            - For yes/no prompts: "y", "n", "yes", "no"
+            - For selections: "1", "2", "react", "typescript", etc.
+            - For text input: any string value
+            
+            Examples:
+            1. Answer yes/no: send_input_to_command("cmd_123", "y")
+            2. Select option: send_input_to_command("cmd_123", "2")
+            3. Enter name: send_input_to_command("cmd_123", "my-project")
+            4. Choose template: send_input_to_command("cmd_123", "typescript")
+            """
+        )
+        async def send_input_to_command(
+            terminal_id: Annotated[str, R("""Target terminal ID
+            
+            Description:
+            - Must be an existing active terminal ID
+            - Terminal must have a running interactive command
+            - Use get_terminals() to find available terminal IDs
+            
+            Examples:
+            - "terminal_abc123" - Standard terminal ID
+            - "term_001" - Short terminal ID
+            - "interactive_term" - Named terminal
+            """)],
+            command_id: Annotated[str, R("""Running command ID
+            
+            Description:
+            - Must be a currently running interactive command
+            - Use get_terminal_current_output() to find running command ID
+            - Command must be in 'running' status
+            - Command must be of type 'interactive'
+            
+            Examples:
+            - "cmd_abc123" - Standard command ID
+            - "command_001" - Sequential command ID
+            """)],
+            input_text: Annotated[str, R("""Input text to send
+            
+            Description:
+            - Text input to send to the interactive command
+            - Newline character will be automatically added
+            - Should match what the command is expecting
+            
+            Common Input Examples:
+            - "y" or "yes" - Confirm prompts
+            - "n" or "no" - Decline prompts
+            - "1", "2", "3" - Menu selections
+            - "my-project" - Project names
+            - "typescript" - Template selections
+            - "" - Empty input (just press Enter)
+            
+            Special Cases:
+            - For password prompts: enter the actual password
+            - For editor prompts: enter the text content
+            - For file paths: enter absolute or relative paths
+            """)]
+        ) -> AsyncGenerator[str, None]:
+            """向运行中的交互式命令发送输入"""
+            try:
+                # 验证终端
+                terminal = self.terminal_service.get_terminal(terminal_id)
+                if not terminal:
+                    yield json.dumps({
+                        "success": False,
+                        "error": "终端不存在",
+                        "error_code": "TERMINAL_NOT_FOUND"
+                    }, ensure_ascii=False)
+                    return
+                
+                # 发送输入
+                success = self.command_service.send_input_to_command(command_id, input_text)
+                
+                if success:
+                    yield json.dumps({
+                        "success": True,
+                        "message": f"成功发送输入到命令: {input_text}",
+                        "data": {
+                            "terminal_id": terminal_id,
+                            "command_id": command_id,
+                            "input_text": input_text
+                        }
+                    }, ensure_ascii=False)
+                else:
+                    yield json.dumps({
+                        "success": False,
+                        "error": "发送输入失败，请检查命令状态和类型",
+                        "error_code": "SEND_INPUT_FAILED"
+                    }, ensure_ascii=False)
+                    
+            except Exception as e:
+                self.logger.error(f"发送输入异常: {e}")
+                yield json.dumps({
+                    "success": False,
+                    "error": str(e),
+                    "error_code": "INTERNAL_ERROR"
+                }, ensure_ascii=False)
+        
+        @self.streaming_tool(
             description="""Force terminate the running command in the specified terminal
             
             Functionality:

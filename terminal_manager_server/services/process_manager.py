@@ -37,6 +37,35 @@ class ProcessManager:
         with self.process_lock:
             return self.processes.get(command_id)
     
+    def is_interactive_process(self, command_id: str) -> bool:
+        """检查进程是否支持交互式输入"""
+        process = self.get_process(command_id)
+        return process is not None and process.stdin is not None and not process.stdin.closed
+    
+    def send_input_to_process(self, command_id: str, input_text: str) -> bool:
+        """向进程发送输入"""
+        try:
+            process = self.get_process(command_id)
+            if not process or not process.stdin:
+                self.logger.warning(f"进程不存在或不支持输入: {command_id}")
+                return False
+            
+            if process.stdin.closed:
+                self.logger.warning(f"进程stdin已关闭: {command_id}")
+                return False
+            
+            process.stdin.write(input_text + '\n')
+            process.stdin.flush()
+            self.logger.info(f"成功发送输入到进程: {command_id} - {input_text}")
+            return True
+            
+        except BrokenPipeError:
+            self.logger.warning(f"进程管道已断开: {command_id}")
+            return False
+        except Exception as e:
+            self.logger.error(f"发送输入到进程异常: {command_id} - {e}")
+            return False
+    
     def kill_process(self, pid: int) -> bool:
         """终止进程"""
         try:
