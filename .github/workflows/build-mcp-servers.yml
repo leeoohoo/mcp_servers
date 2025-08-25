@@ -171,13 +171,32 @@ jobs:
         if [ -f "dist/file-reader-server/file-reader-server${{ matrix.executable_suffix }}" ]; then
           mv "dist/file-reader-server/file-reader-server${{ matrix.executable_suffix }}" "dist/file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
         else
-          # 处理带时间戳的文件名
-          for exe in dist/file-reader-server/file-reader-server*${{ matrix.executable_suffix }}; do
+          # 处理MCP Framework生成的tar.gz文件或带时间戳的文件名
+          cd dist/file-reader-server
+          # 首先尝试解压tar.gz文件
+          for tarfile in *.tar.gz; do
+            if [ -f "$tarfile" ]; then
+              echo "解压 $tarfile"
+              tar -xzf "$tarfile"
+              # 查找解压后的可执行文件
+              for exe in file-reader-server*${{ matrix.executable_suffix }}; do
+                if [ -f "$exe" ] && [ -x "$exe" ]; then
+                  mv "$exe" "../file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+                  cd ../..
+                  rm -rf "dist/file-reader-server"
+                  exit 0
+                fi
+              done
+            fi
+          done
+          # 如果没有tar.gz文件，处理带时间戳的文件名
+          for exe in file-reader-server*${{ matrix.executable_suffix }}; do
             if [ -f "$exe" ]; then
-              mv "$exe" "dist/file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+              mv "$exe" "../file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
               break
             fi
           done
+          cd ../..
         fi
         rm -rf "dist/file-reader-server"
       shell: bash
@@ -198,13 +217,32 @@ jobs:
         if [ -f "dist/terminal-manager-server/terminal-stream-server${{ matrix.executable_suffix }}" ]; then
           mv "dist/terminal-manager-server/terminal-stream-server${{ matrix.executable_suffix }}" "dist/terminal-manager-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
         else
-          # 处理带时间戳的文件名
-          for exe in dist/terminal-manager-server/terminal-stream-server*${{ matrix.executable_suffix }}; do
+          # 处理MCP Framework生成的tar.gz文件或带时间戳的文件名
+          cd dist/terminal-manager-server
+          # 首先尝试解压tar.gz文件
+          for tarfile in *.tar.gz; do
+            if [ -f "$tarfile" ]; then
+              echo "解压 $tarfile"
+              tar -xzf "$tarfile"
+              # 查找解压后的可执行文件
+              for exe in terminal-stream-server*${{ matrix.executable_suffix }}; do
+                if [ -f "$exe" ] && [ -x "$exe" ]; then
+                  mv "$exe" "../terminal-manager-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+                  cd ../..
+                  rm -rf "dist/terminal-manager-server"
+                  exit 0
+                fi
+              done
+            fi
+          done
+          # 如果没有tar.gz文件，处理带时间戳的文件名
+          for exe in terminal-stream-server*${{ matrix.executable_suffix }}; do
             if [ -f "$exe" ]; then
-              mv "$exe" "dist/terminal-manager-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+              mv "$exe" "../terminal-manager-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
               break
             fi
           done
+          cd ../..
         fi
         rm -rf "dist/terminal-manager-server"
       shell: bash
@@ -225,13 +263,32 @@ jobs:
         if [ -f "dist/expert-stream-server/expert-stream-server${{ matrix.executable_suffix }}" ]; then
           mv "dist/expert-stream-server/expert-stream-server${{ matrix.executable_suffix }}" "dist/expert-stream-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
         else
-          # 处理带时间戳的文件名
-          for exe in dist/expert-stream-server/expert-stream-server*${{ matrix.executable_suffix }}; do
+          # 处理MCP Framework生成的tar.gz文件或带时间戳的文件名
+          cd dist/expert-stream-server
+          # 首先尝试解压tar.gz文件
+          for tarfile in *.tar.gz; do
+            if [ -f "$tarfile" ]; then
+              echo "解压 $tarfile"
+              tar -xzf "$tarfile"
+              # 查找解压后的可执行文件
+              for exe in expert-stream-server*${{ matrix.executable_suffix }}; do
+                if [ -f "$exe" ] && [ -x "$exe" ]; then
+                  mv "$exe" "../expert-stream-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+                  cd ../..
+                  rm -rf "dist/expert-stream-server"
+                  exit 0
+                fi
+              done
+            fi
+          done
+          # 如果没有tar.gz文件，处理带时间戳的文件名
+          for exe in expert-stream-server*${{ matrix.executable_suffix }}; do
             if [ -f "$exe" ]; then
-              mv "$exe" "dist/expert-stream-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+              mv "$exe" "../expert-stream-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
               break
             fi
           done
+          cd ../..
         fi
         rm -rf "dist/expert-stream-server"
       shell: bash
@@ -281,6 +338,13 @@ jobs:
             fi
           fi
         done
+        
+        # Linux 特殊处理：确保文件权限正确
+        if [ "${{ matrix.platform }}" = "linux" ]; then
+          echo "🐧 Linux 权限修复:"
+          chmod +x *${{ matrix.executable_suffix }} 2>/dev/null || echo "权限修复完成"
+          ls -la *${{ matrix.executable_suffix }} 2>/dev/null || echo "没有找到可执行文件"
+        fi
 
     # 13. macOS 特殊处理：显示架构信息
     - name: macOS Architecture Info
@@ -316,6 +380,13 @@ jobs:
         echo "要打包的文件:"
         ls -la
         
+        # 调试：显示匹配模式和实际文件
+        echo "匹配模式: *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+        echo "查找匹配的文件:"
+        ls -la *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }} 2>/dev/null || echo "没有找到匹配的文件"
+        echo "所有可执行文件:"
+        find . -type f -executable 2>/dev/null || echo "查找可执行文件完成"
+        
         if [ "${{ matrix.platform }}" = "windows" ]; then
           # Windows 使用 zip，确保包含所有服务器文件
           if command -v 7z >/dev/null 2>&1; then
@@ -326,7 +397,16 @@ jobs:
           fi
         else
           # Linux 和 macOS 使用 tar.gz
-          tar -czf ../${{ matrix.archive_name }}.tar.gz *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}
+          # 使用更宽松的匹配模式，匹配所有可执行文件
+          if ls *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }} 1> /dev/null 2>&1; then
+            tar -czf ../${{ matrix.archive_name }}.tar.gz *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}
+          else
+            echo "警告: 未找到匹配 *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }} 的文件"
+            echo "尝试打包所有可执行文件:"
+            ls -la
+            # 备用方案：打包所有文件
+            tar -czf ../${{ matrix.archive_name }}.tar.gz *
+          fi
         fi
         
         cd ..
