@@ -164,12 +164,13 @@ jobs:
       run: |
         echo "🔨 构建文件读取服务器..."
         echo "平台: ${{ matrix.mcp_platform }}, 架构: ${{ matrix.arch }}"
-        # 清理之前的构建产物，避免覆盖
-        rm -rf dist/file-*server* || true
-        python -m mcp_framework.build --platform ${{ matrix.mcp_platform }} --server file_reader_server/file_reader_server.py --no-test
-        # 立即重命名以避免被后续构建覆盖
-        if [ -d "dist" ] && [ -f "dist/file-reader-server${{ matrix.executable_suffix }}" ]; then
-          mv "dist/file-reader-server${{ matrix.executable_suffix }}" "dist/file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+        # 创建独立的输出目录
+        mkdir -p "dist/file-reader-server"
+        python -m mcp_framework.build --platform ${{ matrix.mcp_platform }} --server file_reader_server/file_reader_server.py --no-test --output-dir "dist/file-reader-server"
+        # 重命名并移动到最终位置
+        if [ -f "dist/file-reader-server/file-reader-server${{ matrix.executable_suffix }}" ]; then
+          mv "dist/file-reader-server/file-reader-server${{ matrix.executable_suffix }}" "dist/file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+          rm -rf "dist/file-reader-server"
         fi
       shell: bash
 
@@ -182,12 +183,13 @@ jobs:
       run: |
         echo "🔨 构建终端管理服务器..."
         echo "平台: ${{ matrix.mcp_platform }}, 架构: ${{ matrix.arch }}"
-        # 清理之前的构建产物，避免覆盖
-        rm -rf dist/terminal-*server* || true
-        python -m mcp_framework.build --platform ${{ matrix.mcp_platform }} --server terminal_manager_server/terminal_stream_server.py --no-test
-        # 立即重命名以避免被后续构建覆盖
-        if [ -d "dist" ] && [ -f "dist/terminal-stream-server${{ matrix.executable_suffix }}" ]; then
-          mv "dist/terminal-stream-server${{ matrix.executable_suffix }}" "dist/terminal-manager-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+        # 创建独立的输出目录
+        mkdir -p "dist/terminal-manager-server"
+        python -m mcp_framework.build --platform ${{ matrix.mcp_platform }} --server terminal_manager_server/terminal_stream_server.py --no-test --output-dir "dist/terminal-manager-server"
+        # 重命名并移动到最终位置
+        if [ -f "dist/terminal-manager-server/terminal-stream-server${{ matrix.executable_suffix }}" ]; then
+          mv "dist/terminal-manager-server/terminal-stream-server${{ matrix.executable_suffix }}" "dist/terminal-manager-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+          rm -rf "dist/terminal-manager-server"
         fi
       shell: bash
 
@@ -200,12 +202,13 @@ jobs:
       run: |
         echo "🔨 构建AI专家服务器..."
         echo "平台: ${{ matrix.mcp_platform }}, 架构: ${{ matrix.arch }}"
-        # 清理之前的构建产物，避免覆盖
-        rm -rf dist/expert-*server* || true
-        python -m mcp_framework.build --platform ${{ matrix.mcp_platform }} --server expert_stream_server/expert_stream_server.py --no-test
-        # 立即重命名以避免被后续构建覆盖
-        if [ -d "dist" ] && [ -f "dist/expert-stream-server${{ matrix.executable_suffix }}" ]; then
-          mv "dist/expert-stream-server${{ matrix.executable_suffix }}" "dist/expert-stream-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+        # 创建独立的输出目录
+        mkdir -p "dist/expert-stream-server"
+        python -m mcp_framework.build --platform ${{ matrix.mcp_platform }} --server expert_stream_server/expert_stream_server.py --no-test --output-dir "dist/expert-stream-server"
+        # 重命名并移动到最终位置
+        if [ -f "dist/expert-stream-server/expert-stream-server${{ matrix.executable_suffix }}" ]; then
+          mv "dist/expert-stream-server/expert-stream-server${{ matrix.executable_suffix }}" "dist/expert-stream-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+          rm -rf "dist/expert-stream-server"
         fi
       shell: bash
 
@@ -290,17 +293,21 @@ jobs:
         echo "📦 创建发布包..."
         cd dist
         
+        # 显示要打包的文件
+        echo "要打包的文件:"
+        ls -la
+        
         if [ "${{ matrix.platform }}" = "windows" ]; then
-          # Windows 使用 zip
+          # Windows 使用 zip，确保包含所有服务器文件
           if command -v 7z >/dev/null 2>&1; then
-            7z a ../${{ matrix.archive_name }}.zip *${{ matrix.executable_suffix }}
+            7z a ../${{ matrix.archive_name }}.zip *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}
           else
-            # 备用方案：使用 PowerShell
-            powershell -Command "Compress-Archive -Path '*${{ matrix.executable_suffix }}' -DestinationPath '../${{ matrix.archive_name }}.zip'"
+            # 备用方案：使用 PowerShell，明确指定文件模式
+            powershell -Command "Compress-Archive -Path '*-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}' -DestinationPath '../${{ matrix.archive_name }}.zip'"
           fi
         else
-          # Linux 和 macOS 使用 tar.gz
-          tar -czf ../${{ matrix.archive_name }}.tar.gz *
+          # Linux 和 macOS 使用 tar.gz，只打包服务器文件
+          tar -czf ../${{ matrix.archive_name }}.tar.gz *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}
         fi
         
         cd ..
