@@ -172,13 +172,21 @@ jobs:
           mv "dist/file-reader-server/file-reader-server${{ matrix.executable_suffix }}" "dist/file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
           rm -rf "dist/file-reader-server"
         else
-          # 处理带时间戳的文件名
-          for file in dist/file-reader-server/file-reader-server*${{ matrix.executable_suffix }}; do
-            if [ -f "$file" ]; then
-              mv "$file" "dist/file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
-              break
+          # 处理MCP Framework生成的tar.gz文件
+          cd dist/file-reader-server
+          for tarfile in *.tar.gz; do
+            if [ -f "$tarfile" ]; then
+              tar -xzf "$tarfile"
+              # 查找解压后的可执行文件
+              for exe in file-reader-server*${{ matrix.executable_suffix }}; do
+                if [ -f "$exe" ] && [ -x "$exe" ]; then
+                  mv "$exe" "../file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+                  break 2
+                fi
+              done
             fi
           done
+          cd ../..
           rm -rf "dist/file-reader-server"
         fi
       shell: bash
@@ -200,13 +208,21 @@ jobs:
           mv "dist/terminal-manager-server/terminal-stream-server${{ matrix.executable_suffix }}" "dist/terminal-manager-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
           rm -rf "dist/terminal-manager-server"
         else
-          # 处理带时间戳的文件名
-          for file in dist/terminal-manager-server/terminal-stream-server*${{ matrix.executable_suffix }}; do
-            if [ -f "$file" ]; then
-              mv "$file" "dist/terminal-manager-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
-              break
+          # 处理MCP Framework生成的tar.gz文件
+          cd dist/terminal-manager-server
+          for tarfile in *.tar.gz; do
+            if [ -f "$tarfile" ]; then
+              tar -xzf "$tarfile"
+              # 查找解压后的可执行文件
+              for exe in terminal-stream-server*${{ matrix.executable_suffix }}; do
+                if [ -f "$exe" ] && [ -x "$exe" ]; then
+                  mv "$exe" "../terminal-manager-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+                  break 2
+                fi
+              done
             fi
           done
+          cd ../..
           rm -rf "dist/terminal-manager-server"
         fi
       shell: bash
@@ -228,13 +244,21 @@ jobs:
           mv "dist/expert-stream-server/expert-stream-server${{ matrix.executable_suffix }}" "dist/expert-stream-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
           rm -rf "dist/expert-stream-server"
         else
-          # 处理带时间戳的文件名
-          for file in dist/expert-stream-server/expert-stream-server*${{ matrix.executable_suffix }}; do
-            if [ -f "$file" ]; then
-              mv "$file" "dist/expert-stream-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
-              break
+          # 处理MCP Framework生成的tar.gz文件
+          cd dist/expert-stream-server
+          for tarfile in *.tar.gz; do
+            if [ -f "$tarfile" ]; then
+              tar -xzf "$tarfile"
+              # 查找解压后的可执行文件
+              for exe in expert-stream-server*${{ matrix.executable_suffix }}; do
+                if [ -f "$exe" ] && [ -x "$exe" ]; then
+                  mv "$exe" "../expert-stream-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+                  break 2
+                fi
+              done
             fi
           done
+          cd ../..
           rm -rf "dist/expert-stream-server"
         fi
       shell: bash
