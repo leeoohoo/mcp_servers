@@ -104,15 +104,34 @@ jobs:
 
     # 5. 安装 MCP Framework（从 PyPI 安装）
     - name: Install MCP Framework
+      env:
+        PYTHONIOENCODING: utf-8
+        PYTHONUTF8: 1
       run: |
+        echo "📦 安装 MCP Framework..."
         python -m pip install --upgrade pip
-        # 从 PyPI 安装 MCP Framework
-        pip install mcp-framework
+        # Windows 平台使用更稳定的安装方式
+        if [ "${{ runner.os }}" = "Windows" ]; then
+          python -m pip install mcp-framework --no-warn-script-location
+        else
+          pip install mcp-framework
+        fi
       shell: bash
 
     # 6. 安装项目依赖
     - name: Install project dependencies
+      env:
+        PYTHONIOENCODING: utf-8
+        PYTHONUTF8: 1
       run: |
+        echo "📦 安装项目依赖..."
+        # Windows 平台使用更稳定的 pip 升级方式
+        if [ "${{ runner.os }}" = "Windows" ]; then
+          python -m pip install --upgrade pip --no-warn-script-location || echo "pip 升级跳过"
+        else
+          pip install --upgrade pip
+        fi
+        
         # 安装基础依赖
         if [ -f requirements.txt ]; then
           pip install -r requirements.txt
