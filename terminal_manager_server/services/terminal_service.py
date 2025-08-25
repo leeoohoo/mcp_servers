@@ -1,5 +1,6 @@
 import logging
 import os
+from datetime import datetime
 from typing import Optional, List
 from terminal_manager_server.models.terminal import Terminal
 from terminal_manager_server.models.command import Command
@@ -7,23 +8,37 @@ from terminal_manager_server.models.command import Command
 class TerminalService:
     """终端管理服务"""
     
-    def __init__(self):
+    def __init__(self, default_dir: str = None):
         self.logger = logging.getLogger(__name__)
+        self.default_dir = default_dir
     
     def create_terminal(self, working_directory: str) -> Optional[Terminal]:
-        """创建新终端"""
+        """创建新终端或复用空闲终端"""
         try:
             # 验证工作目录
             if not self._validate_working_directory(working_directory):
-                self.logger.error(f"工作目录无效: {working_directory}")
-                return None
+                if self.default_dir:
+                    error_msg = f"工作目录无效: {working_directory}。只允许在以下目录下创建终端: {self.default_dir}"
+                else:
+                    error_msg = f"工作目录无效: {working_directory}"
+                self.logger.error(error_msg)
+                raise ValueError(f"INVALID_WORKING_DIRECTORY:{self.default_dir if self.default_dir else '未配置'}")
+            
+            # 首先检查是否有空闲终端可以复用
+            idle_terminal = Terminal.find_idle_terminal_by_directory(working_directory)
+            if idle_terminal:
+                self.logger.info(f"复用空闲终端: {idle_terminal.terminal_id} 在目录: {working_directory}")
+                # 更新终端的最后活动时间
+                idle_terminal.updated_at = datetime.utcnow()
+                idle_terminal.save()
+                return idle_terminal
             
             # 检查终端数量限制
             if not self.can_create_terminal():
                 self.logger.error("已达到最大终端数量限制")
                 return None
             
-            # 创建终端实例
+            # 创建新终端实例
             terminal = Terminal(
                 working_directory=working_directory,
                 status='active'
@@ -31,12 +46,16 @@ class TerminalService:
             
             # 保存到数据库
             if terminal.save():
-                self.logger.info(f"创建终端成功: {terminal.terminal_id}")
+                self.logger.info(f"创建新终端成功: {terminal.terminal_id} 在目录: {working_directory}")
                 return terminal
             else:
                 self.logger.error("保存终端到数据库失败")
                 return None
                 
+        except ValueError as ve:
+            # 重新抛出ValueError，让路由层处理
+            self.logger.error(f"创建终端异常: {ve}")
+            raise
         except Exception as e:
             self.logger.error(f"创建终端异常: {e}")
             return None
@@ -233,20 +252,35 @@ class TerminalService:
         try:
             # 检查目录是否存在
             if not os.path.exists(directory):
+                self.logger.error(f"工作目录不存在: {directory}")
                 return False
             
             # 检查是否为目录
             if not os.path.isdir(directory):
+                self.logger.error(f"路径不是目录: {directory}")
                 return False
             
             # 检查权限
             if not os.access(directory, os.R_OK | os.X_OK):
+                self.logger.error(f"工作目录权限不足: {directory}")
                 return False
             
             # 检查路径安全性（防止路径遍历）
             normalized_path = os.path.normpath(directory)
             if '..' in normalized_path:
+                self.logger.error(f"工作目录包含不安全路径: {directory}")
                 return False
+            
+            # 如果配置了默认工作目录，检查是否在允许的目录下
+            if self.default_dir:
+                normalized_default = os.path.normpath(self.default_dir)
+                normalized_requested = os.path.normpath(directory)
+                
+                # 检查请求的目录是否在默认目录下或就是默认目录
+                if not (normalized_requested == normalized_default or 
+                        normalized_requested.startswith(normalized_default + os.sep)):
+                    self.logger.error(f"工作目录不在允许范围内。请求目录: {directory}, 允许的工作目录: {self.default_dir}")
+                    return False
             
             return True
             

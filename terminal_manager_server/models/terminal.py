@@ -87,6 +87,30 @@ class Terminal:
             print(f"统计活跃终端失败: {e}")
             return 0
     
+    @classmethod
+    def find_idle_terminal_by_directory(cls, working_directory: str) -> Optional['Terminal']:
+        """查找指定目录下的空闲终端"""
+        try:
+            collection = db.get_collection('terminals')
+            # 查找指定目录下的活跃终端
+            terminals = collection.find({
+                'status': 'active',
+                'working_directory': working_directory
+            }).sort('updated_at', -1)
+            
+            # 检查每个终端是否空闲（没有正在运行的命令）
+            from .command import Command
+            for terminal_data in terminals:
+                terminal = cls.from_dict(terminal_data)
+                running_command = Command.find_running_by_terminal_id(terminal.terminal_id)
+                if not running_command:
+                    return terminal
+            
+            return None
+        except Exception as e:
+            print(f"查找空闲终端失败: {e}")
+            return None
+    
     def update_status(self, status: str) -> bool:
         """更新终端状态"""
         try:

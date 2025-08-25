@@ -1,9 +1,0 @@
-{
-  "host": "localhost",
-  "port": 8005,
-  "log_level": "INFO",
-  "log_file": null,
-  "default_dir": null,
-  "max_connections": 100,
-  "timeout": 30
-}

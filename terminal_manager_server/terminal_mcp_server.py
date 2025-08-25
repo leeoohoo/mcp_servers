@@ -102,6 +102,19 @@ class TerminalMCPServer(EnhancedMCPServer):
             """最大终端数参数"""
             pass
         
+        @self.decorators.server_param("default_dir")
+        async def default_dir_param(
+            param: Annotated[str, ServerParam(
+                display_name="默认工作目录",
+                description="创建终端时的默认工作目录，只允许在此目录下创建终端",
+                param_type="string",
+                default_value="/Users/lilei/project/learn/mcp_servers/terminal_manager_server",
+                required=False
+            )]
+        ):
+            """默认工作目录参数"""
+            pass
+        
         @self.decorators.server_param("enable_cleanup")
         async def enable_cleanup_param(
             param: Annotated[bool, ServerParam(
@@ -161,6 +174,7 @@ class TerminalMCPServer(EnhancedMCPServer):
             - If not specified, will use the current working directory
             - Path must exist and be accessible
             - Supports both relative and absolute paths
+            - Must be within the configured default directory
             
             Examples:
             - "/Users/username/project" (absolute path)
@@ -182,16 +196,39 @@ class TerminalMCPServer(EnhancedMCPServer):
                     }, ensure_ascii=False)
                     return
                 
+                # 检查是否是复用的终端
+                from models.command import Command
+                recent_commands = Command.find_recent_by_terminal_id(terminal.terminal_id, limit=1)
+                is_reused = len(recent_commands) > 0
+                
                 yield json.dumps({
                     "success": True,
                     "data": {
                         "terminal_id": terminal.terminal_id,
                         "working_directory": terminal.working_directory,
                         "status": terminal.status,
-                        "created_at": terminal.created_at.isoformat()
+                        "created_at": terminal.created_at.isoformat(),
+                        "is_reused": is_reused
                     },
-                    "message": "终端创建成功"
+                    "message": "复用空闲终端" if is_reused else "创建新终端成功"
                 }, ensure_ascii=False)
+            except ValueError as ve:
+                # 处理工作目录验证失败
+                error_parts = str(ve).split(':')
+                if len(error_parts) >= 2 and error_parts[0] == "INVALID_WORKING_DIRECTORY":
+                    allowed_dir = error_parts[1]
+                    yield json.dumps({
+                        "success": False,
+                        "error": f"工作目录不在允许范围内。请求目录: {working_directory}, 允许的工作目录: {allowed_dir}",
+                        "error_code": "INVALID_WORKING_DIRECTORY",
+                        "allowed_directory": allowed_dir
+                    }, ensure_ascii=False)
+                else:
+                    yield json.dumps({
+                        "success": False,
+                        "error": str(ve),
+                        "error_code": "VALIDATION_ERROR"
+                    }, ensure_ascii=False)
             except Exception as e:
                 self.logger.error(f"创建终端异常: {e}")
                 yield json.dumps({
@@ -482,7 +519,29 @@ class TerminalMCPServer(EnhancedMCPServer):
             示例：
             - True - 监控构建过程、服务启动
             - False - 快速查看当前目录、文件内容
-            """)] = True
+            """)] = True,
+            timeout_seconds: Annotated[int, O("""Command execution timeout in seconds
+            
+            Description:
+            - Optional timeout for command execution
+            - When timeout is reached, SSE stream will be automatically terminated
+            - Only applies when follow=True
+            - Set to 0 or None to disable timeout (default)
+            
+            Use cases:
+            - Prevent long-running commands from blocking indefinitely
+            - Useful for file execution, build processes, or test runs
+            - Automatically stop monitoring after specified time
+            
+            Examples:
+            - 30 - Timeout after 30 seconds
+            - 300 - Timeout after 5 minutes
+            - 0 - No timeout (default)
+            
+            Note:
+            - Timeout only stops the SSE stream, the actual command may continue running
+            - Use kill_command to actually terminate the running process
+            """)] = 0
         ) -> AsyncGenerator[str, None]:
             """执行命令"""
             try:
@@ -516,8 +575,24 @@ class TerminalMCPServer(EnhancedMCPServer):
                 # 流式监控命令执行状态和输出
                 command_id = command_obj.command_id
                 last_sequence = 0
+                start_time = asyncio.get_event_loop().time()
                 
                 while True:
+                    # 检查超时
+                    if timeout_seconds > 0 and follow:
+                        elapsed_time = asyncio.get_event_loop().time() - start_time
+                        if elapsed_time >= timeout_seconds:
+                            yield json.dumps({
+                                "type": "timeout",
+                                "data": {
+                                    "command_id": command_id,
+                                    "timeout_seconds": timeout_seconds,
+                                    "elapsed_seconds": round(elapsed_time, 2),
+                                    "message": f"命令执行超时 ({timeout_seconds}秒)，SSE 流已断开"
+                                }
+                            }, ensure_ascii=False)
+                            break
+                    
                     # 获取命令状态
                     current_command = self.command_service.get_command(command_id)
                     if not current_command:
@@ -1175,111 +1250,7 @@ class TerminalMCPServer(EnhancedMCPServer):
                     "error_code": "INTERNAL_ERROR"
                 }, ensure_ascii=False)
         
-        @self.streaming_tool(
-            description="""Get list of currently running commands
-            
-            Functionality:
-            - Get information about all currently running commands in the system
-            - Support filtering by terminal ID, or view running commands from all terminals
-            - Real-time display of command execution status and progress
-            - Include detailed command information and statistics
-            
-            Return information:
-            - Command ID, content and type
-            - Associated terminal ID
-            - Start time and elapsed runtime
-            - Current execution status
-            - Process ID (if available)
-            
-            Use cases:
-            - Monitor all active tasks in the system
-            - Find running commands in specific terminals
-            - System resource usage analysis
-            - Task management and scheduling
-            
-            Filter options:
-            - No terminal_id specified: Get running commands from all terminals
-            - Specify terminal_id: Only get running commands from that terminal
-            
-            Examples:
-            1. View all running commands: get_running_commands()
-            2. View specific terminal: get_running_commands("term_001")
-            3. Monitor system status: Call periodically to view changes
-            """
-        )
-        async def get_running_commands(
-            terminal_id: Annotated[str, O("""Terminal ID filter (optional)
-            
-            Description:
-            - Optional parameter to filter running commands from specific terminal
-            - If not specified, will return running commands from all terminals
-            - Must be a valid terminal ID
-            
-            Usage:
-            - Leave empty or don't pass: Get running commands from all terminals
-            - Specify ID: Only get running commands from that terminal
-            
-            How to get terminal ID:
-            1. Use get_terminals() to view available terminals
-            2. Select target terminal ID from results
-            3. Copy the complete terminal_id string
-            
-            Examples:
-            - None or "" - View running commands from all terminals
-            - "terminal_abc123" - Only view commands from specified terminal
-            - "build_term" - Only view commands from build terminal
-            
-            Application scenarios:
-            - Not specified: Global monitoring of all tasks
-            - Specified: Focus on monitoring tasks from specific terminal
-            """)] = None
-        ) -> AsyncGenerator[str, None]:
-            """获取正在运行的命令"""
-            try:
-                commands = self.command_service.get_running_commands(terminal_id)
-                
-                # 首先返回统计信息
-                yield json.dumps({
-                    "type": "summary",
-                    "data": {
-                        "count": len(commands),
-                        "terminal_filter": terminal_id
-                    }
-                }, ensure_ascii=False)
-                
-                # 流式返回每个运行中的命令
-                for i, command in enumerate(commands):
-                    yield json.dumps({
-                        "type": "running_command",
-                        "data": {
-                            "index": i,
-                            "command_id": command.command_id,
-                            "terminal_id": command.terminal_id,
-                            "command": command.command,
-                            "status": command.status,
-                            "command_type": command.command_type,
-                            "start_time": command.start_time.isoformat() if command.start_time else None,
-                            "pid": command.pid
-                        }
-                    }, ensure_ascii=False)
-                    
-                    # 每3个命令暂停一下
-                    if (i + 1) % 3 == 0:
-                        await asyncio.sleep(0.01)
-                
-                # 发送完成信号
-                yield json.dumps({
-                    "type": "complete",
-                    "message": f"获取到 {len(commands)} 个正在运行的命令"
-                }, ensure_ascii=False)
-                
-            except Exception as e:
-                self.logger.error(f"获取运行命令列表异常: {e}")
-                yield json.dumps({
-                    "success": False,
-                    "error": str(e),
-                    "error_code": "INTERNAL_ERROR"
-                }, ensure_ascii=False)
+
         
         return True
     
@@ -1299,7 +1270,8 @@ class TerminalMCPServer(EnhancedMCPServer):
                     'data_dir': 'data',
                     'max_terminals': 10,
                     'enable_cleanup': True,
-                    'cleanup_threshold_minutes': 20
+                    'cleanup_threshold_minutes': 20,
+                    'default_dir': '/Users/lilei/project/learn/mcp_servers/terminal_manager_server'
                 }
             )
             
@@ -1327,7 +1299,7 @@ class TerminalMCPServer(EnhancedMCPServer):
                 raise Exception("数据库连接失败")
             
             # 初始化服务
-            self.terminal_service = TerminalService()
+            self.terminal_service = TerminalService(config_values.get('default_dir'))
             self.command_service = CommandService()
             
             # 使用框架的工具日志记录功能
