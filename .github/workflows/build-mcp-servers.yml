@@ -164,7 +164,13 @@ jobs:
       run: |
         echo "🔨 构建文件读取服务器..."
         echo "平台: ${{ matrix.mcp_platform }}, 架构: ${{ matrix.arch }}"
+        # 清理之前的构建产物，避免覆盖
+        rm -rf dist/file-*server* || true
         python -m mcp_framework.build --platform ${{ matrix.mcp_platform }} --server file_reader_server/file_reader_server.py --no-test
+        # 立即重命名以避免被后续构建覆盖
+        if [ -d "dist" ] && [ -f "dist/file-reader-server${{ matrix.executable_suffix }}" ]; then
+          mv "dist/file-reader-server${{ matrix.executable_suffix }}" "dist/file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+        fi
       shell: bash
 
     # 9. 构建终端管理服务器
@@ -176,7 +182,13 @@ jobs:
       run: |
         echo "🔨 构建终端管理服务器..."
         echo "平台: ${{ matrix.mcp_platform }}, 架构: ${{ matrix.arch }}"
+        # 清理之前的构建产物，避免覆盖
+        rm -rf dist/terminal-*server* || true
         python -m mcp_framework.build --platform ${{ matrix.mcp_platform }} --server terminal_manager_server/terminal_stream_server.py --no-test
+        # 立即重命名以避免被后续构建覆盖
+        if [ -d "dist" ] && [ -f "dist/terminal-stream-server${{ matrix.executable_suffix }}" ]; then
+          mv "dist/terminal-stream-server${{ matrix.executable_suffix }}" "dist/terminal-manager-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+        fi
       shell: bash
 
     # 10. 构建AI专家服务器
@@ -188,7 +200,13 @@ jobs:
       run: |
         echo "🔨 构建AI专家服务器..."
         echo "平台: ${{ matrix.mcp_platform }}, 架构: ${{ matrix.arch }}"
+        # 清理之前的构建产物，避免覆盖
+        rm -rf dist/expert-*server* || true
         python -m mcp_framework.build --platform ${{ matrix.mcp_platform }} --server expert_stream_server/expert_stream_server.py --no-test
+        # 立即重命名以避免被后续构建覆盖
+        if [ -d "dist" ] && [ -f "dist/expert-stream-server${{ matrix.executable_suffix }}" ]; then
+          mv "dist/expert-stream-server${{ matrix.executable_suffix }}" "dist/expert-stream-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+        fi
       shell: bash
 
     # 11. 整理构建产物
@@ -200,38 +218,14 @@ jobs:
       run: |
         echo "📦 整理构建产物..."
         
-        # 显示 dist 目录内容
+        # 修复权限问题（Linux Docker 构建时需要）
+        if [ "${{ matrix.platform }}" = "linux" ]; then
+          sudo chown -R $USER:$USER dist/ || echo "权限修复完成"
+        fi
+        
+        echo "最终构建产物:"
         if [ -d "dist" ]; then
-          echo "当前 dist 目录内容:"
           ls -la dist/
-          
-          # 修复权限问题（Linux Docker 构建时需要）
-          if [ "${{ matrix.platform }}" = "linux" ]; then
-            sudo chown -R $USER:$USER dist/ || echo "权限修复完成"
-          fi
-          
-          # 重命名可执行文件以包含平台信息
-          cd dist
-          
-          # 处理文件读取服务器
-          if [ -f "file-reader-server${{ matrix.executable_suffix }}" ]; then
-            mv "file-reader-server${{ matrix.executable_suffix }}" "file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
-          fi
-          
-          # 处理终端管理服务器
-          if [ -f "terminal-stream-server${{ matrix.executable_suffix }}" ]; then
-            mv "terminal-stream-server${{ matrix.executable_suffix }}" "terminal-manager-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
-          fi
-          
-          # 处理AI专家服务器
-          if [ -f "expert-stream-server${{ matrix.executable_suffix }}" ]; then
-            mv "expert-stream-server${{ matrix.executable_suffix }}" "expert-stream-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
-          fi
-          
-          echo "重命名后的构建产物:"
-          ls -la
-          
-          cd ..
         else
           echo "❌ 没有找到 dist 目录"
           exit 1
@@ -242,6 +236,12 @@ jobs:
       shell: bash
       run: |
         echo "🧪 验证构建产物..."
+        
+        if [ ! -d "dist" ] || [ -z "$(ls -A dist 2>/dev/null)" ]; then
+          echo "❌ dist 目录为空或不存在"
+          exit 1
+        fi
+        
         cd dist
         
         for exe in *${{ matrix.executable_suffix }}; do
