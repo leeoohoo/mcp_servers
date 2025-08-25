@@ -89,6 +89,9 @@ jobs:
 
     # 4. 显示系统信息
     - name: Display system info
+      env:
+        PYTHONIOENCODING: utf-8
+        PYTHONUTF8: 1
       run: |
         echo "🖥️  系统信息:"
         echo "Runner OS: ${{ runner.os }}"
@@ -136,6 +139,9 @@ jobs:
     # 8. 构建文件读取服务器
     - name: Build File Reader Server
       if: hashFiles('file_reader_server/file_reader_server.py') != ''
+      env:
+        PYTHONIOENCODING: utf-8
+        PYTHONUTF8: 1
       run: |
         echo "🔨 构建文件读取服务器..."
         echo "平台: ${{ matrix.mcp_platform }}, 架构: ${{ matrix.arch }}"
@@ -145,6 +151,9 @@ jobs:
     # 9. 构建终端管理服务器
     - name: Build Terminal Manager Server
       if: hashFiles('terminal_manager_server/terminal_stream_server.py') != ''
+      env:
+        PYTHONIOENCODING: utf-8
+        PYTHONUTF8: 1
       run: |
         echo "🔨 构建终端管理服务器..."
         echo "平台: ${{ matrix.mcp_platform }}, 架构: ${{ matrix.arch }}"
@@ -154,6 +163,9 @@ jobs:
     # 10. 构建AI专家服务器
     - name: Build Expert Stream Server
       if: hashFiles('expert_stream_server/expert_stream_server.py') != ''
+      env:
+        PYTHONIOENCODING: utf-8
+        PYTHONUTF8: 1
       run: |
         echo "🔨 构建AI专家服务器..."
         echo "平台: ${{ matrix.mcp_platform }}, 架构: ${{ matrix.arch }}"
@@ -163,6 +175,9 @@ jobs:
     # 11. 整理构建产物
     - name: Organize build artifacts
       shell: bash
+      env:
+        PYTHONIOENCODING: utf-8
+        PYTHONUTF8: 1
       run: |
         echo "📦 整理构建产物..."
         
