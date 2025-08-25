@@ -1,0 +1,199 @@
+# MCP 服务器构建配置文件
+# 这个文件允许您自定义构建行为和服务器发现规则
+
+# 服务器发现配置
+discovery:
+  # 搜索模式 - 用于查找 MCP 服务器文件
+  search_patterns:
+    - "*_server/*.py"
+    - "*_server.py" 
+    - "*-server/*.py"
+    - "*-server.py"
+    - "servers/*/*.py"
+    - "servers/*.py"
+    - "mcp_servers/*/*.py"
+    - "mcp_servers/*.py"
+    - "src/*_server/*.py"
+    - "src/*_server.py"
+    - "src/servers/*.py"
+    - "**/*_server.py"  # 递归搜索
+    - "**/server.py"    # 通用服务器文件名
+  
+  # MCP 指示器 - 用于识别文件是否为 MCP 服务器
+  mcp_indicators:
+    - "from mcp"
+    - "import mcp"
+    - "FastMCP"
+    - "mcp.server"
+    - "mcp.types"
+    - "mcp.Server"
+    - "@app.tool"
+    - "app = FastMCP"
+    - "server = Server"
+    - "StdioServerParameters"
+    - "run_server"
+    - "serve_stdio"
+  
+  # 排除模式 - 这些文件将被忽略
+  exclude_patterns:
+    - "test_*"
+    - "*_test"
+    - "example_*"
+    - "*_example"
+    - "demo_*"
+    - "*_demo"
+    - "__pycache__"
+    - "*.pyc"
+    - ".git"
+    - ".venv"
+    - "venv"
+    - "node_modules"
+
+# 构建配置
+build:
+  # 默认构建平台
+  default_platform: "native"
+  
+  # 支持的平台
+  supported_platforms:
+    - "native"
+    - "linux"
+    - "windows"
+    - "macos"
+  
+  # 构建选项
+  options:
+    # 是否运行测试
+    run_tests: false
+    
+    # 是否清理构建缓存
+    clean_cache: false
+    
+    # 输出目录
+    output_dir: "dist"
+    
+    # 是否创建归档文件
+    create_archive: true
+    
+    # 归档格式 (auto, zip, tar.gz)
+    archive_format: "auto"
+    
+    # 是否并行构建
+    parallel_build: false
+    
+    # 最大并行数
+    max_workers: 4
+  
+  # 依赖管理
+  dependencies:
+    # 是否自动安装依赖
+    auto_install: true
+    
+    # 基础依赖文件
+    base_requirements: "requirements.txt"
+    
+    # 依赖文件搜索模式
+    requirements_patterns:
+      - "{server_dir}/requirements.txt"
+      - "{server_dir}/{server_name}_requirements.txt"
+      - "{parent_dir}/{server_dir}_requirements.txt"
+      - "requirements.txt"
+
+# 服务器特定配置
+servers:
+  # 可以为特定服务器定义自定义配置
+  # 示例:
+  # file-reader-server:
+  #   platform: "linux"
+  #   requirements_file: "file_reader_requirements.txt"
+  #   build_options:
+  #     - "--optimize"
+  #   exclude_from_build: false
+  
+  # terminal-manager-server:
+  #   platform: "native"
+  #   custom_name: "terminal-mgr"
+
+# GitHub Actions 配置
+github_actions:
+  # 是否启用自动构建
+  enabled: true
+  
+  # 触发条件
+  triggers:
+    - "push"
+    - "pull_request"
+    - "workflow_dispatch"
+  
+  # 构建矩阵
+  build_matrix:
+    - platform: "linux"
+      os: "ubuntu-latest"
+      arch: "x86_64"
+    - platform: "windows"
+      os: "windows-latest"
+      arch: "x86_64"
+    - platform: "macos"
+      os: "macos-13"  # Intel Mac
+      arch: "x86_64"
+    - platform: "macos"
+      os: "macos-latest"  # Apple Silicon Mac
+      arch: "arm64"
+  
+  # Python 版本
+  python_version: "3.11"
+  
+  # 工件保留天数
+  artifact_retention_days: 30
+
+# 日志配置
+logging:
+  # 日志级别 (DEBUG, INFO, WARNING, ERROR)
+  level: "INFO"
+  
+  # 是否显示详细输出
+  verbose: false
+  
+  # 日志文件
+  log_file: "build.log"
+  
+  # 是否使用彩色输出
+  colored_output: true
+
+# 高级选项
+advanced:
+  # 构建超时时间 (秒)
+  build_timeout: 600
+  
+  # 重试次数
+  retry_count: 2
+  
+  # 是否在构建失败时继续
+  continue_on_error: true
+  
+  # 自定义构建命令模板
+  build_command_template: |
+    {python} -m mcp_framework.build \
+      --platform {platform} \
+      --server {script_path} \
+      --output-dir {output_dir} \
+      {extra_options}
+  
+  # 环境变量
+  environment:
+    PYTHONIOENCODING: "utf-8"
+    PYTHONUTF8: "1"
+
+# 通知配置
+notifications:
+  # 是否启用通知
+  enabled: false
+  
+  # 通知方式 (email, slack, webhook)
+  methods: []
+  
+  # 通知条件
+  conditions:
+    on_success: false
+    on_failure: true
+    on_start: false

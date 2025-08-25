@@ -1,0 +1,652 @@
+name: Build MCP Servers (Auto-Discovery)
+
+# 触发条件
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # 手动触发
+    inputs:
+      platforms:
+        description: 'Select platforms to build'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - linux
+          - windows
+          - macos-intel
+          - macos-m1m2
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # 服务发现作业
+  discover-servers:
+    name: Discover MCP Servers
+    runs-on: ubuntu-latest
+    outputs:
+      servers: ${{ steps.discover.outputs.servers }}
+      server-count: ${{ steps.discover.outputs.server-count }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Discover MCP servers
+      id: discover
+      run: |
+        echo "🔍 自动发现 MCP 服务器..."
+        
+        # 创建服务器发现脚本
+        cat > discover_servers.py << 'EOF'
+        import os
+        import json
+        import glob
+        from pathlib import Path
+        
+        def find_mcp_servers():
+            """自动发现项目中的 MCP 服务器"""
+            servers = []
+            
+            # 搜索模式：寻找包含 MCP 服务器的 Python 文件
+            patterns = [
+                "*_server/*.py",
+                "*_server.py",
+                "servers/*/*.py",
+                "servers/*.py",
+                "mcp_servers/*/*.py",
+                "mcp_servers/*.py"
+            ]
+            
+            for pattern in patterns:
+                for file_path in glob.glob(pattern, recursive=True):
+                    if self.is_mcp_server(file_path):
+                        server_info = self.extract_server_info(file_path)
+                        if server_info:
+                            servers.append(server_info)
+            
+            return servers
+        
+        def is_mcp_server(file_path):
+            """检查文件是否是 MCP 服务器"""
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    # 检查是否包含 MCP 相关导入
+                    mcp_indicators = [
+                        'from mcp',
+                        'import mcp',
+                        'FastMCP',
+                        'mcp.server',
+                        'mcp.types'
+                    ]
+                    return any(indicator in content for indicator in mcp_indicators)
+            except:
+                return False
+        
+        def extract_server_info(file_path):
+            """提取服务器信息"""
+            path_obj = Path(file_path)
+            
+            # 生成服务器名称
+            if path_obj.parent.name.endswith('_server'):
+                server_name = path_obj.parent.name.replace('_', '-')
+            else:
+                server_name = path_obj.stem.replace('_', '-')
+            
+            # 检查是否有依赖文件
+            requirements_file = None
+            possible_req_files = [
+                path_obj.parent / f"{path_obj.stem}_requirements.txt",
+                path_obj.parent / "requirements.txt",
+                path_obj.parent.parent / f"{path_obj.parent.name}_requirements.txt"
+            ]
+            
+            for req_file in possible_req_files:
+                if req_file.exists():
+                    requirements_file = str(req_file)
+                    break
+            
+            return {
+                'name': server_name,
+                'script_path': file_path,
+                'requirements_file': requirements_file,
+                'directory': str(path_obj.parent)
+            }
+        
+        # 执行发现
+        servers = find_mcp_servers()
+        
+        print(f"发现 {len(servers)} 个 MCP 服务器:")
+        for server in servers:
+            print(f"  - {server['name']}: {server['script_path']}")
+        
+        # 输出到 GitHub Actions
+        import json
+        servers_json = json.dumps(servers)
+        print(f"::set-output name=servers::{servers_json}")
+        print(f"::set-output name=server-count::{len(servers)}")
+        
+        # 保存到文件供后续步骤使用
+        with open('discovered_servers.json', 'w') as f:
+            json.dump(servers, f, indent=2)
+        EOF
+        
+        python discover_servers.py
+      shell: bash
+
+    - name: Upload server discovery results
+      uses: actions/upload-artifact@v4
+      with:
+        name: discovered-servers
+        path: discovered_servers.json
+        retention-days: 1
+
+  # 多平台构建作业
+  build:
+    name: Build on ${{ matrix.platform }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    needs: discover-servers
+    if: needs.discover-servers.outputs.server-count > 0
+
+    strategy:
+      fail-fast: false  # 允许部分平台失败
+      matrix:
+        include:
+          # Linux x86_64
+          - os: ubuntu-latest
+            platform: linux
+            arch: x86_64
+            mcp_platform: linux  # 现在使用本地构建
+            executable_suffix: ""
+            archive_format: tar.gz
+            archive_name: mcp-servers-linux-x86_64
+
+          # Windows x86_64
+          - os: windows-latest
+            platform: windows
+            arch: x86_64
+            mcp_platform: native
+            executable_suffix: .exe
+            archive_format: zip
+            archive_name: mcp-servers-windows-x86_64
+
+          # macOS Intel x86_64
+          - os: macos-13  # Intel Mac
+            platform: macos
+            arch: x86_64
+            mcp_platform: native
+            executable_suffix: ""
+            archive_format: tar.gz
+            archive_name: mcp-servers-macos-intel-x86_64
+
+          # macOS Apple Silicon ARM64 (M1/M2/M3)
+          - os: macos-latest  # Apple Silicon Mac
+            platform: macos
+            arch: arm64
+            mcp_platform: native
+            executable_suffix: ""
+            archive_format: tar.gz
+            archive_name: mcp-servers-macos-apple-silicon-arm64
+
+    steps:
+    # 1. 检出代码
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # 2. 下载服务器发现结果
+    - name: Download server discovery results
+      uses: actions/download-artifact@v4
+      with:
+        name: discovered-servers
+        path: .
+
+    # 3. 设置 Python 环境
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    # 4. 显示系统信息
+    - name: Display system info
+      env:
+        PYTHONIOENCODING: utf-8
+        PYTHONUTF8: 1
+      run: |
+        echo "🖥️  系统信息:"
+        echo "Runner OS: ${{ runner.os }}"
+        echo "Platform: ${{ matrix.platform }}-${{ matrix.arch }}"
+        echo "MCP Platform: ${{ matrix.mcp_platform }}"
+        python --version
+        pip --version
+        python -c "import platform; print(f'Python 平台: {platform.platform()}'); print(f'机器架构: {platform.machine()}'); print(f'处理器: {platform.processor()}')"
+      shell: bash
+
+    # 5. 安装 MCP Framework
+    - name: Install MCP Framework
+      env:
+        PYTHONIOENCODING: utf-8
+        PYTHONUTF8: 1
+      run: |
+        echo "📦 安装 MCP Framework..."
+        python -m pip install --upgrade pip
+        if [ "${{ runner.os }}" = "Windows" ]; then
+          python -m pip install mcp-framework --no-warn-script-location
+        else
+          pip install mcp-framework
+        fi
+      shell: bash
+
+    # 6. 安装项目依赖
+    - name: Install project dependencies
+      env:
+        PYTHONIOENCODING: utf-8
+        PYTHONUTF8: 1
+      run: |
+        echo "📦 安装项目依赖..."
+        if [ "${{ runner.os }}" = "Windows" ]; then
+          python -m pip install --upgrade pip --no-warn-script-location || echo "pip 升级跳过"
+        else
+          pip install --upgrade pip
+        fi
+        
+        # 安装基础依赖
+        if [ -f requirements.txt ]; then
+          pip install -r requirements.txt
+        fi
+        
+        # 安装发现的服务器特定依赖
+        python << 'EOF'
+        import json
+        import subprocess
+        import sys
+        
+        try:
+            with open('discovered_servers.json', 'r') as f:
+                servers = json.load(f)
+            
+            for server in servers:
+                if server.get('requirements_file'):
+                    print(f"安装 {server['name']} 的依赖: {server['requirements_file']}")
+                    try:
+                        subprocess.run([sys.executable, '-m', 'pip', 'install', '-r', server['requirements_file']], check=True)
+                    except subprocess.CalledProcessError as e:
+                        print(f"警告: 安装 {server['name']} 依赖失败: {e}")
+        except Exception as e:
+            print(f"依赖安装过程中出现错误: {e}")
+        EOF
+      shell: bash
+
+    # 7. 验证 MCP Framework 构建工具
+    - name: Verify MCP Framework build tool
+      run: |
+        echo "🔧 验证 MCP Framework 构建工具..."
+        python -m mcp_framework.build --help
+        python -m mcp_framework.build --check-docker || echo "Docker 检查完成"
+      shell: bash
+
+    # 8. 自动构建所有发现的服务器
+    - name: Build All Discovered Servers
+      env:
+        PYTHONIOENCODING: utf-8
+        PYTHONUTF8: 1
+      run: |
+        echo "🔨 自动构建所有发现的 MCP 服务器..."
+        
+        python << 'EOF'
+        import json
+        import subprocess
+        import sys
+        import os
+        from pathlib import Path
+        
+        try:
+            with open('discovered_servers.json', 'r') as f:
+                servers = json.load(f)
+            
+            print(f"准备构建 {len(servers)} 个服务器...")
+            
+            success_count = 0
+            failed_servers = []
+            
+            for server in servers:
+                server_name = server['name']
+                script_path = server['script_path']
+                
+                print(f"\n{'='*50}")
+                print(f"构建服务器: {server_name}")
+                print(f"脚本路径: {script_path}")
+                print(f"平台: ${{ matrix.mcp_platform }}, 架构: ${{ matrix.arch }}")
+                print(f"{'='*50}")
+                
+                # 检查脚本文件是否存在
+                if not os.path.exists(script_path):
+                    print(f"❌ 脚本文件不存在: {script_path}")
+                    failed_servers.append(server_name)
+                    continue
+                
+                # 创建独立的输出目录
+                output_dir = f"dist/{server_name}"
+                os.makedirs(output_dir, exist_ok=True)
+                
+                # 构建命令
+                build_cmd = [
+                    sys.executable, '-m', 'mcp_framework.build',
+                    '--platform', '${{ matrix.mcp_platform }}',
+                    '--server', script_path,
+                    '--no-test',
+                    '--output-dir', output_dir
+                ]
+                
+                try:
+                    print(f"执行构建命令: {' '.join(build_cmd)}")
+                    result = subprocess.run(build_cmd, check=True, capture_output=True, text=True)
+                    print(f"✅ {server_name} 构建成功")
+                    print(result.stdout)
+                    
+                    # 查找并移动生成的可执行文件
+                    executable_suffix = "${{ matrix.executable_suffix }}"
+                    import glob
+                    import shutil
+                    
+                    # 查找生成的可执行文件
+                    possible_patterns = [
+                        f"{output_dir}/{server_name}{executable_suffix}",
+                        f"{output_dir}/{server_name}*{executable_suffix}",
+                        f"{output_dir}/*{executable_suffix}"
+                    ]
+                    
+                    found_exe = None
+                    for pattern in possible_patterns:
+                        matches = glob.glob(pattern)
+                        if matches:
+                            # 选择第一个匹配的文件
+                            found_exe = matches[0]
+                            break
+                    
+                    if found_exe and os.path.exists(found_exe):
+                        # 生成最终文件名（简化版，不包含平台架构信息以避免归档问题）
+                        final_exe = f"dist/{server_name}{executable_suffix}"
+                        
+                        # 如果目标文件已存在，先删除
+                        if os.path.exists(final_exe):
+                            os.remove(final_exe)
+                        
+                        shutil.move(found_exe, final_exe)
+                        print(f"✅ 移动可执行文件: {found_exe} -> {final_exe}")
+                        
+                        # 清理临时目录
+                        shutil.rmtree(output_dir)
+                    else:
+                        print(f"⚠️  没有找到生成的可执行文件")
+                        print(f"搜索模式: {possible_patterns}")
+                        # 列出输出目录内容以便调试
+                        if os.path.exists(output_dir):
+                            print(f"输出目录内容: {os.listdir(output_dir)}")
+                    
+                    success_count += 1
+                    
+                except subprocess.CalledProcessError as e:
+                    print(f"❌ {server_name} 构建失败")
+                    print(f"错误输出: {e.stderr}")
+                    print(f"标准输出: {e.stdout}")
+                    failed_servers.append(server_name)
+                except Exception as e:
+                    print(f"❌ {server_name} 构建过程中出现异常: {e}")
+                    failed_servers.append(server_name)
+            
+            print(f"\n{'='*50}")
+            print(f"构建摘要: {success_count}/{len(servers)} 个服务器构建成功")
+            if failed_servers:
+                print(f"失败的服务器: {', '.join(failed_servers)}")
+            print(f"{'='*50}")
+            
+            # 如果没有任何服务器构建成功，退出失败
+            if success_count == 0:
+                print("❌ 没有任何服务器构建成功")
+                sys.exit(1)
+                
+        except Exception as e:
+            print(f"构建过程中出现严重错误: {e}")
+            sys.exit(1)
+        EOF
+      shell: bash
+
+    # 9. 整理构建产物
+    - name: Organize build artifacts
+      shell: bash
+      env:
+        PYTHONIOENCODING: utf-8
+        PYTHONUTF8: 1
+      run: |
+        echo "📦 整理构建产物..."
+        
+        echo "最终构建产物:"
+        if [ -d "dist" ]; then
+          ls -la dist/
+        else
+          echo "❌ 没有找到 dist 目录"
+          exit 1
+        fi
+
+    # 10. 验证构建产物
+    - name: Verify build artifacts
+      shell: bash
+      run: |
+        echo "🧪 验证构建产物..."
+        
+        if [ ! -d "dist" ] || [ -z "$(ls -A dist 2>/dev/null)" ]; then
+          echo "❌ dist 目录为空或不存在"
+          exit 1
+        fi
+        
+        cd dist
+        
+        for exe in *${{ matrix.executable_suffix }}; do
+          if [ -f "$exe" ]; then
+            echo "✅ 找到: $exe"
+            
+            # 显示文件信息
+            ls -lh "$exe"
+            file "$exe" 2>/dev/null || echo "文件类型检查完成"
+            
+            # 仅在本地构建时测试可执行文件
+            if [ "${{ matrix.mcp_platform }}" = "native" ]; then
+              echo "测试可执行文件: $exe"
+              timeout 10s "./$exe" --help || echo "帮助测试完成: $exe"
+            fi
+          fi
+        done
+
+    # 11. 创建发布包
+    - name: Create release archive
+      shell: bash
+      run: |
+        echo "📦 创建发布包..."
+        cd dist
+        
+        # 显示要打包的文件
+        echo "要打包的文件:"
+        ls -la
+        
+        # 查找所有可执行文件（排除目录和.tar.gz文件）
+        echo "查找可执行文件..."
+        executable_files=$(find . -maxdepth 1 -type f -executable ! -name "*.tar.gz" ! -name "*.zip" ! -name "*.txt" ! -name "*.md" | sed 's|^./||' || true)
+        
+        if [ -z "$executable_files" ]; then
+          echo "❌ 没有找到可执行文件"
+          echo "目录内容:"
+          ls -la
+          exit 1
+        fi
+        
+        echo "找到的可执行文件:"
+        echo "$executable_files"
+        
+        if [ "${{ matrix.platform }}" = "windows" ]; then
+          # Windows 使用 zip
+          if command -v 7z >/dev/null 2>&1; then
+            echo "$executable_files" | xargs 7z a ../${{ matrix.archive_name }}.zip
+          else
+            # 创建临时文件列表
+            echo "$executable_files" > temp_files.txt
+            powershell -Command "\$files = Get-Content temp_files.txt; Compress-Archive -Path \$files -DestinationPath '../${{ matrix.archive_name }}.zip'"
+            rm -f temp_files.txt
+          fi
+        else
+          # Linux 和 macOS 使用 tar.gz
+          echo "$executable_files" | xargs tar -czf ../${{ matrix.archive_name }}.tar.gz
+        fi
+        
+        cd ..
+        echo "✅ 创建的发布包:"
+        ls -lh ${{ matrix.archive_name }}.* || dir ${{ matrix.archive_name }}.*
+
+    # 12. 上传构建产物
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.archive_name }}
+        path: |
+          ${{ matrix.archive_name }}.*
+        retention-days: 30
+        if-no-files-found: error
+
+    # 13. 构建摘要
+    - name: Build Summary
+      run: |
+        echo "✅ ${{ matrix.platform }}-${{ matrix.arch }} 构建完成"
+        echo "📁 产物已上传为: ${{ matrix.archive_name }}"
+        echo "🔧 使用的构建平台: ${{ matrix.mcp_platform }}"
+      shell: bash
+
+  # 构建状态摘要
+  build-summary:
+    needs: [discover-servers, build]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+    - name: Overall Build Summary
+      run: |
+        echo "🎯 MCP 服务器自动构建摘要"
+        echo "=============================="
+        echo "发现的服务器数量: ${{ needs.discover-servers.outputs.server-count }}"
+        echo "构建状态: ${{ needs.build.result }}"
+        echo ""
+        echo "📦 支持的平台:"
+        echo "- Linux x86_64 (本地构建)"
+        echo "- Windows x86_64 (本地构建)"
+        echo "- macOS Intel x86_64 (本地构建)"
+        echo "- macOS Apple Silicon ARM64 (本地构建)"
+        echo ""
+        if [ "${{ needs.build.result }}" = "success" ]; then
+          echo "✅ 所有平台构建成功！"
+        else
+          echo "❌ 部分平台构建失败，请检查日志"
+        fi
+
+  # 创建 GitHub Release
+  release:
+    name: Create Release
+    needs: [discover-servers, build]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') && needs.build.result == 'success'
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Download server discovery results
+      uses: actions/download-artifact@v4
+      with:
+        name: discovered-servers
+        path: .
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts/
+
+    - name: Generate release notes
+      id: release-notes
+      run: |
+        echo "📝 生成发布说明..."
+        
+        # 读取发现的服务器信息
+        python << 'EOF'
+        import json
+        
+        try:
+            with open('discovered_servers.json', 'r') as f:
+                servers = json.load(f)
+            
+            server_list = "\n".join([f"          - **{server['name'].replace('-', ' ').title()}** - {server['script_path']}" for server in servers])
+            
+            release_body = f"""## 🚀 MCP Servers Release ${{{{ github.ref_name }}}}
+          
+          此版本包含 {len(servers)} 个自动发现的 MCP 服务器的跨平台构建产物：
+          
+          ### 📦 包含的服务器
+{server_list}
+
+          ### 🚀 快速开始
+          1. 下载适合您平台的压缩包
+          2. 解压缩文件
+          3. 直接运行可执行文件
+          
+          ### 📋 平台支持
+          - **Linux x86_64**: `mcp-servers-linux-x86_64.tar.gz`
+          - **Windows x86_64**: `mcp-servers-windows-x86_64.zip`
+          - **macOS Intel x86_64**: `mcp-servers-macos-intel-x86_64.tar.gz`
+          - **macOS Apple Silicon ARM64 (M1/M2/M3)**: `mcp-servers-macos-apple-silicon-arm64.tar.gz`
+
+          ### 🔧 架构说明
+          - **Mac M1/M2/M3 用户**: 使用 `macos-apple-silicon-arm64` 版本以获得最佳性能
+          - **Intel Mac 用户**: 使用 `macos-intel-x86_64` 版本
+          - **Windows 用户**: 需要 Windows 10 或更高版本
+          - **Linux 用户**: 兼容大多数现代 Linux 发行版
+
+          ### 🛠️ 技术信息
+          - Python 版本: ${{{{ env.PYTHON_VERSION }}}}
+          - 构建工具: MCP Framework (自动发现)
+          - 服务器数量: {len(servers)}
+          - 构建时间: ${{{{ github.run_number }}}}
+          - 提交哈希: ${{{{ github.sha }}}}
+
+          ### 🤖 自动化特性
+          此版本使用自动服务器发现功能，无需手动配置即可构建项目中的所有 MCP 服务器。"""
+
+            # 保存到文件
+            with open('release_body.txt', 'w') as f:
+                f.write(release_body)
+
+            print("✅ 发布说明生成完成")
+
+        except Exception as e:
+            print(f"生成发布说明时出现错误: {e}")
+            # 使用默认发布说明
+            with open('release_body.txt', 'w') as f:
+                f.write("## 🚀 MCP Servers Release\n\n自动构建的 MCP 服务器集合。")
+        EOF
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: artifacts/*/*
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+        body_path: release_body.txt
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
