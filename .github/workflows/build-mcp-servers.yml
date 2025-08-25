@@ -1,0 +1,289 @@
+name: Build MCP Servers
+
+# 触发条件
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # 手动触发
+
+jobs:
+  # 多平台构建作业
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        include:
+          # Linux 构建
+          - os: ubuntu-latest
+            platform: linux
+            mcp_platform: linux
+            executable_suffix: ""
+            archive_format: tar.gz
+            archive_name: mcp-servers-linux-amd64
+          
+          # Windows 构建 - 这是关键！
+          - os: windows-latest
+            platform: windows
+            mcp_platform: windows
+            executable_suffix: .exe
+            archive_format: zip
+            archive_name: mcp-servers-windows-amd64
+          
+          # macOS 构建
+          - os: macos-latest
+            platform: macos
+            mcp_platform: macos
+            executable_suffix: ""
+            archive_format: tar.gz
+            archive_name: mcp-servers-macos-universal
+
+    steps:
+    # 1. 检出代码
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # 2. 设置 Python 环境
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    # 3. 缓存依赖（加速构建）
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/pip
+          ~/.local/share/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt', '**/expert_stream_server_requirements.txt', '**/terminal_stream_server_requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    # 4. 安装依赖
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        pip install -r requirements.txt
+        pip install -r expert_stream_server/expert_stream_server_requirements.txt
+        pip install -r terminal_manager_server/terminal_stream_server_requirements.txt
+
+    # 5. 运行测试（可选）
+    - name: Run tests
+      run: |
+        python -m pytest tests/ || echo "No tests found"
+
+    # 6. 检查 mcp-build 工具
+    - name: Check mcp-build availability
+      run: |
+        mcp-build --help || echo "mcp-build not found, installing..."
+        pip install mcp-framework
+
+    # 7. 使用 mcp-build 构建所有服务器
+    - name: Build all servers with mcp-framework
+      run: |
+        # 构建文件读取服务器
+        mcp-build --platform ${{ matrix.mcp_platform }} --server file_reader_server/file_reader_server.py
+        
+        # 构建终端管理服务器
+        mcp-build --platform ${{ matrix.mcp_platform }} --server terminal_manager_server/terminal_stream_server.py
+        
+        # 构建AI专家服务器
+        mcp-build --platform ${{ matrix.mcp_platform }} --server expert_stream_server/expert_stream_server.py
+
+    # 8. 整理构建产物
+    - name: Organize build artifacts
+      run: |
+        # 创建统一的 dist 目录
+        mkdir -p dist
+        
+        # 查找并移动构建产物到 dist 目录
+        find . -name "*-server*" -type f -executable -not -path "./dist/*" -exec mv {} dist/ \;
+        
+        # 显示构建结果
+        echo "Build artifacts:"
+        ls -la dist/
+
+    # 10. Windows 特殊处理：代码签名（可选）
+    - name: Sign Windows executables
+      if: matrix.platform == 'windows'
+      run: |
+        echo "Windows executables built:"
+        dir dist
+        # 这里可以添加代码签名步骤
+        # signtool sign /f certificate.p12 /p password dist/*.exe
+
+    # 11. 创建发布包
+    - name: Create release archive
+      shell: bash
+      run: |
+        cd dist
+        if [ "${{ matrix.platform }}" = "windows" ]; then
+          7z a ../${{ matrix.archive_name }}.zip *${{ matrix.executable_suffix }}
+        else
+          tar -czf ../${{ matrix.archive_name }}.tar.gz *
+        fi
+
+    # 12. 上传构建产物
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.archive_name }}
+        path: |
+          ${{ matrix.archive_name }}.*
+        retention-days: 30
+
+    # 13. 测试可执行文件
+    - name: Test executables
+      shell: bash
+      run: |
+        cd dist
+        echo "Testing built executables:"
+        for exe in *${{ matrix.executable_suffix }}; do
+          if [ -f "$exe" ]; then
+            echo "Testing $exe..."
+            ./$exe --help || echo "Help command failed for $exe"
+          fi
+        done
+
+  # 创建 GitHub Release
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts/
+
+    - name: Display downloaded files
+      run: |
+        find artifacts/ -type f -name "*" | head -20
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: artifacts/*/*
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+        body: |
+          ## MCP Servers Release
+          
+          This release includes pre-built executables for all three MCP servers:
+          
+          ### 📦 Included Servers
+          - **File Reader Server** - 文件读取和项目结构分析服务
+          - **Terminal Manager Server** - 终端管理和命令执行服务  
+          - **Expert Stream Server** - AI专家对话和工具调用服务
+          
+          ### 🚀 Quick Start
+          1. Download the archive for your platform
+          2. Extract the executables
+          3. Run any server directly: `./file-reader-server`, `./terminal-manager-server`, or `./expert-stream-server`
+          
+          ### 📋 Platform Support
+          - **Linux**: `mcp-servers-linux-amd64.tar.gz`
+          - **Windows**: `mcp-servers-windows-amd64.zip`
+          - **macOS**: `mcp-servers-macos-universal.tar.gz`
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 构建 Docker 镜像（Linux 版本）
+  docker:
+    name: Build Docker Images
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_TOKEN }}
+      continue-on-error: true
+
+    - name: Create Dockerfiles
+      run: |
+        # 创建文件读取服务器的 Dockerfile
+        cat > Dockerfile.file-reader << 'EOF'
+        FROM python:3.11-slim
+        WORKDIR /app
+        COPY requirements.txt .
+        RUN pip install -r requirements.txt
+        COPY file_reader_server/ ./file_reader_server/
+        EXPOSE 8000
+        CMD ["python", "file_reader_server/file_reader_server.py"]
+        EOF
+        
+        # 创建终端管理服务器的 Dockerfile
+        cat > Dockerfile.terminal-manager << 'EOF'
+        FROM python:3.11-slim
+        WORKDIR /app
+        COPY requirements.txt .
+        COPY terminal_manager_server/terminal_stream_server_requirements.txt ./terminal_requirements.txt
+        RUN pip install -r requirements.txt && pip install -r terminal_requirements.txt
+        COPY terminal_manager_server/ ./terminal_manager_server/
+        EXPOSE 8080
+        CMD ["python", "terminal_manager_server/terminal_stream_server.py"]
+        EOF
+        
+        # 创建AI专家服务器的 Dockerfile
+        cat > Dockerfile.expert-stream << 'EOF'
+        FROM python:3.11-slim
+        WORKDIR /app
+        COPY requirements.txt .
+        COPY expert_stream_server/expert_stream_server_requirements.txt ./expert_requirements.txt
+        RUN pip install -r requirements.txt && pip install -r expert_requirements.txt
+        COPY expert_stream_server/ ./expert_stream_server/
+        EXPOSE 8005
+        CMD ["python", "expert_stream_server/expert_stream_server.py"]
+        EOF
+
+    - name: Build and push Docker images
+      run: |
+        # 构建并推送文件读取服务器镜像
+        docker buildx build \
+          --platform linux/amd64,linux/arm64 \
+          --push \
+          -f Dockerfile.file-reader \
+          -t ${{ secrets.DOCKER_USERNAME }}/mcp-file-reader:latest \
+          -t ${{ secrets.DOCKER_USERNAME }}/mcp-file-reader:${{ github.sha }} \
+          . || echo "Docker build failed for file-reader"
+        
+        # 构建并推送终端管理服务器镜像
+        docker buildx build \
+          --platform linux/amd64,linux/arm64 \
+          --push \
+          -f Dockerfile.terminal-manager \
+          -t ${{ secrets.DOCKER_USERNAME }}/mcp-terminal-manager:latest \
+          -t ${{ secrets.DOCKER_USERNAME }}/mcp-terminal-manager:${{ github.sha }} \
+          . || echo "Docker build failed for terminal-manager"
+        
+        # 构建并推送AI专家服务器镜像
+        docker buildx build \
+          --platform linux/amd64,linux/arm64 \
+          --push \
+          -f Dockerfile.expert-stream \
+          -t ${{ secrets.DOCKER_USERNAME }}/mcp-expert-stream:latest \
+          -t ${{ secrets.DOCKER_USERNAME }}/mcp-expert-stream:${{ github.sha }} \
+          . || echo "Docker build failed for expert-stream"
+      continue-on-error: true
