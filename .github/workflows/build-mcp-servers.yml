@@ -38,7 +38,7 @@ jobs:
           - os: ubuntu-latest
             platform: linux
             arch: x86_64
-            mcp_platform: linux
+            mcp_platform: native  # Linux 使用本地构建，避免 Docker 问题
             executable_suffix: ""
             archive_format: tar.gz
             archive_name: mcp-servers-linux-x86_64
@@ -170,25 +170,16 @@ jobs:
         # 重命名并移动到最终位置
         if [ -f "dist/file-reader-server/file-reader-server${{ matrix.executable_suffix }}" ]; then
           mv "dist/file-reader-server/file-reader-server${{ matrix.executable_suffix }}" "dist/file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
-          rm -rf "dist/file-reader-server"
         else
-          # 处理MCP Framework生成的tar.gz文件
-          cd dist/file-reader-server
-          for tarfile in *.tar.gz; do
-            if [ -f "$tarfile" ]; then
-              tar -xzf "$tarfile"
-              # 查找解压后的可执行文件
-              for exe in file-reader-server*${{ matrix.executable_suffix }}; do
-                if [ -f "$exe" ] && [ -x "$exe" ]; then
-                  mv "$exe" "../file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
-                  break 2
-                fi
-              done
+          # 处理带时间戳的文件名
+          for exe in dist/file-reader-server/file-reader-server*${{ matrix.executable_suffix }}; do
+            if [ -f "$exe" ]; then
+              mv "$exe" "dist/file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+              break
             fi
           done
-          cd ../..
-          rm -rf "dist/file-reader-server"
         fi
+        rm -rf "dist/file-reader-server"
       shell: bash
 
     # 9. 构建终端管理服务器
@@ -206,25 +197,16 @@ jobs:
         # 重命名并移动到最终位置
         if [ -f "dist/terminal-manager-server/terminal-stream-server${{ matrix.executable_suffix }}" ]; then
           mv "dist/terminal-manager-server/terminal-stream-server${{ matrix.executable_suffix }}" "dist/terminal-manager-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
-          rm -rf "dist/terminal-manager-server"
         else
-          # 处理MCP Framework生成的tar.gz文件
-          cd dist/terminal-manager-server
-          for tarfile in *.tar.gz; do
-            if [ -f "$tarfile" ]; then
-              tar -xzf "$tarfile"
-              # 查找解压后的可执行文件
-              for exe in terminal-stream-server*${{ matrix.executable_suffix }}; do
-                if [ -f "$exe" ] && [ -x "$exe" ]; then
-                  mv "$exe" "../terminal-manager-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
-                  break 2
-                fi
-              done
+          # 处理带时间戳的文件名
+          for exe in dist/terminal-manager-server/terminal-stream-server*${{ matrix.executable_suffix }}; do
+            if [ -f "$exe" ]; then
+              mv "$exe" "dist/terminal-manager-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+              break
             fi
           done
-          cd ../..
-          rm -rf "dist/terminal-manager-server"
         fi
+        rm -rf "dist/terminal-manager-server"
       shell: bash
 
     # 10. 构建AI专家服务器
@@ -242,25 +224,16 @@ jobs:
         # 重命名并移动到最终位置
         if [ -f "dist/expert-stream-server/expert-stream-server${{ matrix.executable_suffix }}" ]; then
           mv "dist/expert-stream-server/expert-stream-server${{ matrix.executable_suffix }}" "dist/expert-stream-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
-          rm -rf "dist/expert-stream-server"
         else
-          # 处理MCP Framework生成的tar.gz文件
-          cd dist/expert-stream-server
-          for tarfile in *.tar.gz; do
-            if [ -f "$tarfile" ]; then
-              tar -xzf "$tarfile"
-              # 查找解压后的可执行文件
-              for exe in expert-stream-server*${{ matrix.executable_suffix }}; do
-                if [ -f "$exe" ] && [ -x "$exe" ]; then
-                  mv "$exe" "../expert-stream-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
-                  break 2
-                fi
-              done
+          # 处理带时间戳的文件名
+          for exe in dist/expert-stream-server/expert-stream-server*${{ matrix.executable_suffix }}; do
+            if [ -f "$exe" ]; then
+              mv "$exe" "dist/expert-stream-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+              break
             fi
           done
-          cd ../..
-          rm -rf "dist/expert-stream-server"
         fi
+        rm -rf "dist/expert-stream-server"
       shell: bash
 
     # 11. 整理构建产物
@@ -271,11 +244,6 @@ jobs:
         PYTHONUTF8: 1
       run: |
         echo "📦 整理构建产物..."
-        
-        # 修复权限问题（Linux Docker 构建时需要）
-        if [ "${{ matrix.platform }}" = "linux" ]; then
-          sudo chown -R $USER:$USER dist/ || echo "权限修复完成"
-        fi
         
         echo "最终构建产物:"
         if [ -d "dist" ]; then
@@ -357,17 +325,8 @@ jobs:
             powershell -Command "Compress-Archive -Path '*-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}' -DestinationPath '../${{ matrix.archive_name }}.zip'"
           fi
         else
-          # Linux 和 macOS 使用 tar.gz，只打包服务器文件
-          # 使用更灵活的文件匹配，处理可能的时间戳
-          files_to_pack=$(ls *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }} 2>/dev/null || echo "")
-          if [ -n "$files_to_pack" ]; then
-            tar -czf ../${{ matrix.archive_name }}.tar.gz $files_to_pack
-          else
-            echo "❌ 没有找到匹配的文件: *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
-            echo "当前目录文件:"
-            ls -la
-            exit 1
-          fi
+          # Linux 和 macOS 使用 tar.gz
+          tar -czf ../${{ matrix.archive_name }}.tar.gz *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}
         fi
         
         cd ..
