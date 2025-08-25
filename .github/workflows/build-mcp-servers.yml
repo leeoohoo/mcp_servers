@@ -99,12 +99,12 @@ jobs:
         python -c "import platform; print(f'Python 平台: {platform.platform()}'); print(f'机器架构: {platform.machine()}'); print(f'处理器: {platform.processor()}')"
       shell: bash
 
-    # 5. 安装 MCP Framework（正确的安装方式）
+    # 5. 安装 MCP Framework（从 PyPI 安装）
     - name: Install MCP Framework
       run: |
         python -m pip install --upgrade pip
-        # 安装本地的 MCP Framework
-        pip install -e .
+        # 从 PyPI 安装 MCP Framework
+        pip install mcp-framework
       shell: bash
 
     # 6. 安装项目依赖
