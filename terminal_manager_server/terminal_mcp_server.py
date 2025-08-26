@@ -108,7 +108,7 @@ class TerminalMCPServer(EnhancedMCPServer):
                 display_name="默认工作目录",
                 description="创建终端时的默认工作目录，只允许在此目录下创建终端",
                 param_type="string",
-                default_value="/Users/lilei/project/learn/mcp_servers/terminal_manager_server",
+                default_value="/Users/lilei/project/learn/test_dir",
                 required=False
             )]
         ):
@@ -1261,25 +1261,18 @@ class TerminalMCPServer(EnhancedMCPServer):
             setup_logging()
             self.logger.info("正在初始化 Terminal MCP Server...")
             
-            # 使用框架的通用配置处理流程
-            config_values = self._setup_decorators_and_log_config(
-                required_keys=[],
-                config_defaults={
-                    'storage_type': 'file',
-                    'mongodb_uri': 'mongodb://admin:password@localhost:27017/terminal_manager?authSource=admin',
-                    'data_dir': 'data',
-                    'max_terminals': 10,
-                    'enable_cleanup': True,
-                    'cleanup_threshold_minutes': 20,
-                    'default_dir': '/Users/lilei/project/learn/mcp_servers/terminal_manager_server'
-                }
-            )
+            # 使用 get_config_value 方法获取配置值，避免配置文件被清空
+            storage_type = self.get_config_value('storage_type', 'file')
+            mongodb_uri = self.get_config_value('mongodb_uri', 'mongodb://admin:password@localhost:27017/terminal_manager?authSource=admin')
+            data_dir = self.get_config_value('data_dir', 'data')
+            default_dir = self.get_config_value('default_dir', '/Users/lilei/project/learn/test_dir')
             
+            self.logger.info(f"当前配置: storage_type={storage_type}, data_dir={data_dir}, default_dir={default_dir}")
             # 配置数据库
             db_config = {
-                'storage_type': config_values.get('storage_type', 'file'),
-                'mongodb_uri': config_values.get('mongodb_uri', 'mongodb://admin:password@localhost:27017/terminal_manager?authSource=admin'),
-                'data_dir': config_values.get('data_dir', 'data')
+                'storage_type': storage_type,
+                'mongodb_uri': mongodb_uri,
+                'data_dir': data_dir
             }
             
             # 从 mongodb_uri 中提取数据库名
@@ -1299,11 +1292,8 @@ class TerminalMCPServer(EnhancedMCPServer):
                 raise Exception("数据库连接失败")
             
             # 初始化服务
-            self.terminal_service = TerminalService(config_values.get('default_dir'))
+            self.terminal_service = TerminalService(default_dir)
             self.command_service = CommandService()
-            
-            # 使用框架的工具日志记录功能
-            self._log_tools_info()
             
             self.logger.info("Terminal MCP Server 初始化完成")
         except Exception as e:

@@ -6,3 +6,9 @@
 /*/build/*
 /*/dist/*
 /*/data/*
+/terminal_manager_server/models/__pycache__
+/terminal_manager_server/services/__pycache__
+/terminal_manager_server/utils/__pycache__
+/terminal_manager_server/__pycache__
+/terminal_manager_server/config
+/terminal_manager_server/logs
