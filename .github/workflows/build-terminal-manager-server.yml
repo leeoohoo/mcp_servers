@@ -1,12 +1,17 @@
-name: Build MCP Servers (Corrected)
+name: Build Terminal Manager Server
 
 # 触发条件
 on:
   push:
     branches: [ main, develop ]
+    paths:
+      - 'terminal_manager_server/**'
+      - '.github/workflows/build-terminal-manager-server.yml'
     tags: [ 'v*' ]
   pull_request:
     branches: [ main ]
+    paths:
+      - 'terminal_manager_server/**'
   workflow_dispatch:  # 手动触发
     inputs:
       platforms:
@@ -25,9 +30,9 @@ env:
   PYTHON_VERSION: '3.11'
 
 jobs:
-  # 文件读取服务器构建作业
-  build-file-reader:
-    name: Build File Reader Server on ${{ matrix.platform }}-${{ matrix.arch }}
+  # 终端管理服务器构建作业
+  build:
+    name: Build Terminal Manager Server on ${{ matrix.platform }}-${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -41,7 +46,7 @@ jobs:
             mcp_platform: native
             executable_suffix: ""
             archive_format: tar.gz
-            archive_name: file-reader-server-linux-x86_64
+            archive_name: terminal-manager-server-linux-x86_64
 
           # Windows x86_64
           - os: windows-latest
@@ -50,7 +55,7 @@ jobs:
             mcp_platform: native
             executable_suffix: .exe
             archive_format: zip
-            archive_name: file-reader-server-windows-x86_64
+            archive_name: terminal-manager-server-windows-x86_64
 
           # macOS Intel x86_64
           - os: macos-13
@@ -59,7 +64,7 @@ jobs:
             mcp_platform: native
             executable_suffix: ""
             archive_format: tar.gz
-            archive_name: file-reader-server-macos-intel-x86_64
+            archive_name: terminal-manager-server-macos-intel-x86_64
 
           # macOS Apple Silicon ARM64 (M1/M2/M3)
           - os: macos-latest
@@ -68,7 +73,7 @@ jobs:
             mcp_platform: native
             executable_suffix: ""
             archive_format: tar.gz
-            archive_name: file-reader-server-macos-apple-silicon-arm64
+            archive_name: terminal-manager-server-macos-apple-silicon-arm64
 
     steps:
     # 1. 检出代码
@@ -82,12 +87,7 @@ jobs:
         python-version: ${{ env.PYTHON_VERSION }}
         cache: 'pip'
 
-    # 3. 设置 Docker（仅 Linux 需要，Windows 跳过 Docker）
-    - name: Set up Docker Buildx
-      if: matrix.mcp_platform == 'linux'
-      uses: docker/setup-buildx-action@v3
-
-    # 4. 显示系统信息
+    # 3. 显示系统信息
     - name: Display system info
       env:
         PYTHONIOENCODING: utf-8
@@ -102,7 +102,7 @@ jobs:
         python -c "import platform; print(f'Python 平台: {platform.platform()}'); print(f'机器架构: {platform.machine()}'); print(f'处理器: {platform.processor()}')"
       shell: bash
 
-    # 5. 安装 MCP Framework（从 PyPI 安装）
+    # 4. 安装 MCP Framework
     - name: Install MCP Framework
       env:
         PYTHONIOENCODING: utf-8
@@ -110,7 +110,6 @@ jobs:
       run: |
         echo "📦 安装 MCP Framework..."
         python -m pip install --upgrade pip
-        # Windows 平台使用更稳定的安装方式
         if [ "${{ runner.os }}" = "Windows" ]; then
           python -m pip install mcp-framework --no-warn-script-location
         else
@@ -118,14 +117,13 @@ jobs:
         fi
       shell: bash
 
-    # 6. 安装项目依赖
+    # 5. 安装项目依赖
     - name: Install project dependencies
       env:
         PYTHONIOENCODING: utf-8
         PYTHONUTF8: 1
       run: |
         echo "📦 安装项目依赖..."
-        # Windows 平台使用更稳定的 pip 升级方式
         if [ "${{ runner.os }}" = "Windows" ]; then
           python -m pip install --upgrade pip --no-warn-script-location || echo "pip 升级跳过"
         else
@@ -136,20 +134,12 @@ jobs:
         if [ -f requirements.txt ]; then
           pip install -r requirements.txt
         fi
-        if [ -f file_reader_server/file_reader_server_requirements.txt ]; then
-          pip install -r file_reader_server/file_reader_server_requirements.txt
-        fi
-        # 安装各服务器的特定依赖
-        if [ -f expert_stream_server/expert_stream_server_requirements.txt ]; then
-          pip install -r expert_stream_server/expert_stream_server_requirements.txt
-        fi
-        
         if [ -f terminal_manager_server/terminal_stream_server_requirements.txt ]; then
           pip install -r terminal_manager_server/terminal_stream_server_requirements.txt
         fi
       shell: bash
 
-    # 7. 验证 MCP Framework 构建工具
+    # 6. 验证 MCP Framework 构建工具
     - name: Verify MCP Framework build tool
       run: |
         echo "🔧 验证 MCP Framework 构建工具..."
@@ -157,53 +147,7 @@ jobs:
         python -m mcp_framework.build --check-docker || echo "Docker 检查完成"
       shell: bash
 
-    # 8. 构建文件读取服务器
-    - name: Build File Reader Server
-      if: hashFiles('file_reader_server/file_reader_server.py') != ''
-      env:
-        PYTHONIOENCODING: utf-8
-        PYTHONUTF8: 1
-      run: |
-        echo "🔨 构建文件读取服务器..."
-        echo "平台: ${{ matrix.mcp_platform }}, 架构: ${{ matrix.arch }}"
-        # 创建独立的输出目录
-        mkdir -p "dist/file-reader-server"
-        python -m mcp_framework.build --platform ${{ matrix.mcp_platform }} --server file_reader_server/file_reader_server.py --no-test --output-dir "dist/file-reader-server"
-        # 重命名并移动到最终位置
-        if [ -f "dist/file-reader-server/file-reader-server${{ matrix.executable_suffix }}" ]; then
-          mv "dist/file-reader-server/file-reader-server${{ matrix.executable_suffix }}" "dist/file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
-        else
-          # 处理MCP Framework生成的tar.gz文件或带时间戳的文件名
-          cd dist/file-reader-server
-          # 首先尝试解压tar.gz文件
-          for tarfile in *.tar.gz; do
-            if [ -f "$tarfile" ]; then
-              echo "解压 $tarfile"
-              tar -xzf "$tarfile"
-              # 查找解压后的可执行文件
-              for exe in file-reader-server*${{ matrix.executable_suffix }}; do
-                if [ -f "$exe" ] && [ -x "$exe" ]; then
-                  mv "$exe" "../file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
-                  cd ../..
-                  rm -rf "dist/file-reader-server"
-                  exit 0
-                fi
-              done
-            fi
-          done
-          # 如果没有tar.gz文件，处理带时间戳的文件名
-          for exe in file-reader-server*${{ matrix.executable_suffix }}; do
-            if [ -f "$exe" ]; then
-              mv "$exe" "../file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
-              break
-            fi
-          done
-          cd ../..
-        fi
-        rm -rf "dist/file-reader-server"
-      shell: bash
-
-    # 9. 构建终端管理服务器
+    # 7. 构建终端管理服务器
     - name: Build Terminal Manager Server
       if: hashFiles('terminal_manager_server/terminal_stream_server.py') != ''
       env:
@@ -249,70 +193,7 @@ jobs:
         rm -rf "dist/terminal-manager-server"
       shell: bash
 
-    # 10. 构建AI专家服务器
-    - name: Build Expert Stream Server
-      if: hashFiles('expert_stream_server/expert_stream_server.py') != ''
-      env:
-        PYTHONIOENCODING: utf-8
-        PYTHONUTF8: 1
-      run: |
-        echo "🔨 构建AI专家服务器..."
-        echo "平台: ${{ matrix.mcp_platform }}, 架构: ${{ matrix.arch }}"
-        # 创建独立的输出目录
-        mkdir -p "dist/expert-stream-server"
-        python -m mcp_framework.build --platform ${{ matrix.mcp_platform }} --server expert_stream_server/expert_stream_server.py --no-test --output-dir "dist/expert-stream-server"
-        # 重命名并移动到最终位置
-        if [ -f "dist/expert-stream-server/expert-stream-server${{ matrix.executable_suffix }}" ]; then
-          mv "dist/expert-stream-server/expert-stream-server${{ matrix.executable_suffix }}" "dist/expert-stream-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
-        else
-          # 处理MCP Framework生成的tar.gz文件或带时间戳的文件名
-          cd dist/expert-stream-server
-          # 首先尝试解压tar.gz文件
-          for tarfile in *.tar.gz; do
-            if [ -f "$tarfile" ]; then
-              echo "解压 $tarfile"
-              tar -xzf "$tarfile"
-              # 查找解压后的可执行文件
-              for exe in expert-stream-server*${{ matrix.executable_suffix }}; do
-                if [ -f "$exe" ] && [ -x "$exe" ]; then
-                  mv "$exe" "../expert-stream-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
-                  cd ../..
-                  rm -rf "dist/expert-stream-server"
-                  exit 0
-                fi
-              done
-            fi
-          done
-          # 如果没有tar.gz文件，处理带时间戳的文件名
-          for exe in expert-stream-server*${{ matrix.executable_suffix }}; do
-            if [ -f "$exe" ]; then
-              mv "$exe" "../expert-stream-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
-              break
-            fi
-          done
-          cd ../..
-        fi
-        rm -rf "dist/expert-stream-server"
-      shell: bash
-
-    # 11. 整理构建产物
-    - name: Organize build artifacts
-      shell: bash
-      env:
-        PYTHONIOENCODING: utf-8
-        PYTHONUTF8: 1
-      run: |
-        echo "📦 整理构建产物..."
-        
-        echo "最终构建产物:"
-        if [ -d "dist" ]; then
-          ls -la dist/
-        else
-          echo "❌ 没有找到 dist 目录"
-          exit 1
-        fi
-
-    # 12. 验证构建产物
+    # 8. 验证构建产物
     - name: Verify build artifacts
       shell: bash
       run: |
@@ -333,7 +214,7 @@ jobs:
             ls -lh "$exe"
             file "$exe" 2>/dev/null || echo "文件类型检查完成"
             
-            # 仅在 macOS 本地构建时测试可执行文件
+            # 仅在本地构建时测试可执行文件
             if [ "${{ matrix.mcp_platform }}" = "native" ]; then
               echo "测试可执行文件: $exe"
               timeout 10s "./$exe" --help || echo "帮助测试完成: $exe"
@@ -348,7 +229,7 @@ jobs:
           ls -la *${{ matrix.executable_suffix }} 2>/dev/null || echo "没有找到可执行文件"
         fi
 
-    # 13. macOS 特殊处理：显示架构信息
+    # 9. macOS 特殊处理：显示架构信息
     - name: macOS Architecture Info
       if: matrix.platform == 'macos'
       run: |
@@ -371,7 +252,7 @@ jobs:
         fi
       shell: bash
 
-    # 14. 创建发布包
+    # 10. 创建发布包
     - name: Create release archive
       shell: bash
       run: |
@@ -382,31 +263,19 @@ jobs:
         echo "要打包的文件:"
         ls -la
         
-        # 调试：显示匹配模式和实际文件
-        echo "匹配模式: *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
-        echo "查找匹配的文件:"
-        ls -la *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }} 2>/dev/null || echo "没有找到匹配的文件"
-        echo "所有可执行文件:"
-        find . -type f -executable 2>/dev/null || echo "查找可执行文件完成"
-        
         if [ "${{ matrix.platform }}" = "windows" ]; then
-          # Windows 使用 zip，确保包含所有服务器文件
+          # Windows 使用 zip
           if command -v 7z >/dev/null 2>&1; then
             7z a ../${{ matrix.archive_name }}.zip *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}
           else
-            # 备用方案：使用 PowerShell，明确指定文件模式
             powershell -Command "Compress-Archive -Path '*-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}' -DestinationPath '../${{ matrix.archive_name }}.zip'"
           fi
         else
           # Linux 和 macOS 使用 tar.gz
-          # 使用更宽松的匹配模式，匹配所有可执行文件
           if ls *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }} 1> /dev/null 2>&1; then
             tar -czf ../${{ matrix.archive_name }}.tar.gz *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}
           else
-            echo "警告: 未找到匹配 *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }} 的文件"
-            echo "尝试打包所有可执行文件:"
-            ls -la
-            # 备用方案：打包所有文件
+            echo "警告: 未找到匹配的文件，打包所有文件"
             tar -czf ../${{ matrix.archive_name }}.tar.gz *
           fi
         fi
@@ -415,7 +284,7 @@ jobs:
         echo "✅ 创建的发布包:"
         ls -lh ${{ matrix.archive_name }}.* || dir ${{ matrix.archive_name }}.*
 
-    # 15. 上传构建产物
+    # 11. 上传构建产物
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
@@ -425,10 +294,10 @@ jobs:
         retention-days: 30
         if-no-files-found: error
 
-    # 16. 构建摘要
+    # 12. 构建摘要
     - name: Build Summary
       run: |
-        echo "✅ ${{ matrix.platform }}-${{ matrix.arch }} 构建完成"
+        echo "✅ Terminal Manager Server ${{ matrix.platform }}-${{ matrix.arch }} 构建完成"
         echo "📁 产物已上传为: ${{ matrix.archive_name }}"
         echo "🔧 使用的构建平台: ${{ matrix.mcp_platform }}"
       shell: bash
@@ -439,17 +308,11 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     steps:
-    - name: Overall Build Summary
+    - name: Terminal Manager Server Build Summary
       run: |
-        echo "🎯 MCP 服务器跨平台构建摘要"
-        echo "=============================="
+        echo "🎯 Terminal Manager Server 跨平台构建摘要"
+        echo "============================="
         echo "构建状态: ${{ needs.build.result }}"
-        echo ""
-        echo "📦 支持的平台:"
-        echo "- Linux x86_64 (Docker 构建)"
-        echo "- Windows x86_64 (Docker 构建)"
-        echo "- macOS Intel x86_64 (本地构建)"
-        echo "- macOS Apple Silicon ARM64 (本地构建)"
         echo ""
         if [ "${{ needs.build.result }}" = "success" ]; then
           echo "✅ 所有平台构建成功！"
@@ -459,7 +322,7 @@ jobs:
 
   # 创建 GitHub Release
   release:
-    name: Create Release
+    name: Create Terminal Manager Server Release
     needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v') && needs.build.result == 'success'
@@ -490,34 +353,25 @@ jobs:
         prerelease: false
         generate_release_notes: true
         body: |
-          ## 🚀 MCP Servers Release ${{ github.ref_name }}
+          ## 🚀 Terminal Manager Server Release ${{ github.ref_name }}
           
-          此版本包含三个 MCP 服务器的跨平台构建产物：
+          此版本包含 Terminal Manager Server 的跨平台构建产物：
           
-          ### 📦 包含的服务器
-          - **File Reader Server** - 文件读取和项目结构分析服务
-          - **Terminal Manager Server** - 终端管理和命令执行服务  
-          - **Expert Stream Server** - AI专家对话和工具调用服务
+          ### 📦 Terminal Manager Server
+          - **功能**: 终端管理和命令执行服务
+          - **特性**: 多终端会话管理、命令历史记录、进程管理
+          - **安全**: 安全的命令执行环境
           
           ### 🚀 快速开始
           1. 下载适合您平台的压缩包
           2. 解压缩文件
-          3. 直接运行可执行文件：
-             - `./file-reader-server-{platform}-{arch}`
-             - `./terminal-manager-server-{platform}-{arch}`
-             - `./expert-stream-server-{platform}-{arch}`
+          3. 直接运行可执行文件：`./terminal-manager-server-{platform}-{arch}`
           
           ### 📋 平台支持
-          - **Linux x86_64**: `mcp-servers-linux-x86_64.tar.gz`
-          - **Windows x86_64**: `mcp-servers-windows-x86_64.zip`
-          - **macOS Intel x86_64**: `mcp-servers-macos-intel-x86_64.tar.gz`
-          - **macOS Apple Silicon ARM64 (M1/M2/M3)**: `mcp-servers-macos-apple-silicon-arm64.tar.gz`
-          
-          ### 🔧 架构说明
-          - **Mac M1/M2/M3 用户**: 使用 `macos-apple-silicon-arm64` 版本以获得最佳性能
-          - **Intel Mac 用户**: 使用 `macos-intel-x86_64` 版本
-          - **Windows 用户**: 需要 Windows 10 或更高版本
-          - **Linux 用户**: 兼容大多数现代 Linux 发行版
+          - **Linux x86_64**: `terminal-manager-server-linux-x86_64.tar.gz`
+          - **Windows x86_64**: `terminal-manager-server-windows-x86_64.zip`
+          - **macOS Intel x86_64**: `terminal-manager-server-macos-intel-x86_64.tar.gz`
+          - **macOS Apple Silicon ARM64 (M1/M2/M3)**: `terminal-manager-server-macos-apple-silicon-arm64.tar.gz`
           
           ### 🛠️ 技术信息
           - Python 版本: ${{ env.PYTHON_VERSION }}
@@ -526,31 +380,3 @@ jobs:
           - 提交哈希: ${{ github.sha }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # Docker 多架构构建（可选）
-  docker:
-    name: Build Docker Images
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Login to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_TOKEN }}
-      continue-on-error: true
-
-    - name: Build and push Docker images
-      run: |
-        echo "🐳 构建 Docker 镜像..."
-        echo "注意：这需要在项目中添加适当的 Dockerfile"
-        echo "Docker 构建已跳过，请根据需要添加 Dockerfile"
-      continue-on-error: true
