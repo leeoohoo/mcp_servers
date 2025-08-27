@@ -30,7 +30,8 @@ class ExpertMCPServerAnnotated(EnhancedMCPServer):
         """设置工具装饰器"""
 
         @self.streaming_tool(
-            description="Intelligent Development Expert Assistant - Helps you control terminal and execute various development tasks including: file operations, code compilation & building, project management, environment configuration, debugging & testing, etc. Supports querying current workspace content and provides professional development advice and solutions")
+            description="Intelligent Development Expert Assistant - Helps you control terminal and execute various development tasks including: file operations, code compilation & building, project management, environment configuration, debugging & testing, etc. Supports querying current workspace content and provides professional development advice and solutions"
+        )
         async def query_expert_stream(
                 question: Annotated[str, R(
                     "Describe the development task you need to complete or the problem you're facing, e.g.: 'help me build the project', 'show current directory files', 'run tests', 'configure environment', etc.")]

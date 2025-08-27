@@ -1268,6 +1268,12 @@ class TerminalMCPServer(EnhancedMCPServer):
             default_dir = self.get_config_value('default_dir', '/Users/lilei/project/learn/test_dir')
             
             self.logger.info(f"当前配置: storage_type={storage_type}, data_dir={data_dir}, default_dir={default_dir}")
+            
+            # 触发装饰器工具注册（在配置读取之后）
+            _ = self.setup_tools
+            # 触发服务器参数注册（在配置读取之后）
+            _ = self.setup_server_params
+            
             # 配置数据库
             db_config = {
                 'storage_type': storage_type,

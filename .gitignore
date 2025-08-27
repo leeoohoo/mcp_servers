@@ -12,3 +12,7 @@
 /terminal_manager_server/__pycache__
 /terminal_manager_server/config
 /terminal_manager_server/logs
+/expert_stream_server/__pycache__
+/expert_stream_server/config
+/file_reader_server/__pycache__
+/file_reader_server/config

@@ -34,22 +34,11 @@ PyInstaller>=6.0.0
 # 标准库扩展
 pathlib2>=2.3.0  # For older Python versions compatibility
 
-# Logging and Utilities
-# 日志和工具
-# Note: logging, json, asyncio, os, sys, uuid, datetime, threading, subprocess are built-in modules
 
-# Optional Dependencies for Enhanced Functionality
-# 可选依赖，用于增强功能
-# setuptools>=65.0.0  # For package management
-# wheel>=0.37.0       # For wheel building
 
-# Version constraints based on project requirements
-# 基于项目需求的版本约束
-# pymongo==4.5.0     # Specific version used in terminal server
-# psutil==5.9.5       # Specific version used in terminal server  
-# requests==2.31.0    # Specific version used in terminal server
+watchdog>=3.0.0
 
-# Note: mcp_framework appears to be a custom/local framework
-# 注意：mcp_framework 似乎是自定义/本地框架
-# If it's available on PyPI, add:
+
 mcp_framework>=0.1.2
+
+whoosh>=2.7.4
