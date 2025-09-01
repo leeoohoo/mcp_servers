@@ -72,6 +72,68 @@ class FileReaderService:
         
         logger.info(f"File Reader Service initialized with project root: {self.project_root}")
 
+    def _get_markdown_language(self, file_path: str) -> str:
+        """根据文件扩展名获取markdown语言标识符"""
+        extension = Path(file_path).suffix.lower()
+        
+        # 文件扩展名到markdown语言的映射
+        language_map = {
+            '.py': 'python',
+            '.js': 'javascript',
+            '.ts': 'typescript',
+            '.tsx': 'tsx',
+            '.jsx': 'jsx',
+            '.java': 'java',
+            '.kt': 'kotlin',
+            '.swift': 'swift',
+            '.cpp': 'cpp',
+            '.c': 'c',
+            '.h': 'c',
+            '.hpp': 'cpp',
+            '.cs': 'csharp',
+            '.go': 'go',
+            '.rs': 'rust',
+            '.php': 'php',
+            '.rb': 'ruby',
+            '.dart': 'dart',
+            '.vue': 'vue',
+            '.html': 'html',
+            '.htm': 'html',
+            '.css': 'css',
+            '.scss': 'scss',
+            '.sass': 'sass',
+            '.less': 'less',
+            '.json': 'json',
+            '.xml': 'xml',
+            '.yaml': 'yaml',
+            '.yml': 'yaml',
+            '.toml': 'toml',
+            '.ini': 'ini',
+            '.cfg': 'ini',
+            '.conf': 'ini',
+            '.sql': 'sql',
+            '.sh': 'bash',
+            '.bash': 'bash',
+            '.zsh': 'zsh',
+            '.fish': 'fish',
+            '.bat': 'batch',
+            '.ps1': 'powershell',
+            '.dockerfile': 'dockerfile',
+            '.makefile': 'makefile',
+            '.cmake': 'cmake',
+            '.gradle': 'gradle',
+            '.properties': 'properties',
+            '.env': 'bash',
+            '.gitignore': 'gitignore',
+            '.md': 'markdown',
+            '.txt': 'text',
+            '.log': 'log',
+            '.csv': 'csv',
+            '.tsv': 'tsv'
+        }
+        
+        return language_map.get(extension, 'text')
+
     def _should_ignore_path(self, path: Path) -> bool:
         """检查路径是否应该被忽略"""
         # 检查路径中的任何部分是否在忽略列表中
@@ -223,13 +285,9 @@ class FileReaderService:
                 yield json.dumps({"error": f"路径不是文件 {resolved_path}"}, ensure_ascii=False)
                 return
 
-            # 先发送文件信息
-            yield json.dumps({
-                "type": "file_info",
-                "file_path": str(resolved_path),
-                "request_range": f"{start_line}-{end_line}"
-            }, ensure_ascii=False)
-
+            # 获取文件的markdown语言类型
+            markdown_language = self._get_markdown_language(file_path)
+            
             # 读取文件内容
             with open(resolved_path, 'r', encoding='utf-8') as f:
                 all_lines = f.readlines()
@@ -246,27 +304,38 @@ class FileReaderService:
                 }, ensure_ascii=False)
                 return
 
+            # 先发送文件信息
+            yield json.dumps({
+                "type": "file_info",
+                "file_path": str(resolved_path),
+                "request_range": f"{start_line}-{end_line}",
+                "language": markdown_language
+            }, ensure_ascii=False)
+            
             # 发送总行数信息
             yield json.dumps({
                 "type": "meta",
                 "total_lines": total_lines,
                 "actual_range": f"{actual_start}-{actual_end}"
             }, ensure_ascii=False)
+            
+            # 发送markdown代码块开始标记
+            yield f"```{markdown_language}\n"
 
             # 流式输出内容
             for i in range(actual_start - 1, actual_end):
                 line_content = all_lines[i].rstrip('\n')
                 if line_content.strip():  # 只输出非空行
-                    yield json.dumps({
-                        "type": "content",
-                        "line_number": i + 1,
-                        "content": line_content
-                    }, ensure_ascii=False)
+                    # 直接输出代码内容，带行号
+                    yield f"{i + 1}:{line_content}\n"
 
                 # 每10行暂停一下，允许其他任务执行
                 if (i + 1) % 10 == 0:
                     await asyncio.sleep(0.01)
 
+            # 发送markdown代码块结束标记
+            yield "```\n"
+            
             # 发送完成信号
             yield json.dumps({
                 "type": "complete",
@@ -332,14 +401,27 @@ class FileReaderService:
                     except ValueError:
                         relative_path = file_path
 
+                    # 获取文件的markdown语言类型
+                    markdown_language = self._get_markdown_language(file_path)
+                    
                     # 流式输出匹配结果（包含文件地址、匹配行详情和文件总行数）
                     yield json.dumps({
                         "type": "match",
                         "file_path": relative_path,
                         "line_matches": line_matches,
                         "total_matches_in_file": len(line_matches),
-                        "total_lines": total_lines
+                        "total_lines": total_lines,
+                        "language": markdown_language
                     }, ensure_ascii=False)
+                    
+                    # 输出markdown格式的搜索结果
+                    yield f"\n### 📄 {relative_path} ({len(line_matches)} 处匹配)\n\n"
+                    
+                    if line_matches:
+                        yield f"```{markdown_language}\n"
+                        for match in line_matches:
+                            yield f"{match['line_number']}:{match['content']}\n"
+                        yield "```\n"
 
                     results_count += 1
                     
@@ -408,14 +490,21 @@ class FileReaderService:
 
                     compressed_content = self._compress_content(content)
                     total_lines = len(content.split('\n'))
+                    markdown_language = self._get_markdown_language(file_path)
 
-                    # 流式输出文件内容
+                    # 发送文件信息
                     yield json.dumps({
                         "type": "file_content",
                         "file_path": file_path,
                         "total_lines": total_lines,
-                        "content": compressed_content
+                        "language": markdown_language
                     }, ensure_ascii=False)
+                    
+                    # 输出文件标题和markdown代码块
+                    yield f"\n## 📄 {file_path}\n\n"
+                    yield f"```{markdown_language}\n"
+                    yield compressed_content
+                    yield "\n```\n"
 
                 except UnicodeDecodeError:
                     yield json.dumps({
@@ -525,11 +614,21 @@ class FileReaderService:
                 "type": "root",
                 "display": f"🏗️ Project Structure: {self.project_root.name}"
             }, ensure_ascii=False)
+            
+            # 输出 Markdown 格式的项目结构标题
+            yield f"\n## 📁 {self.project_root.name}\n\n```\n"
 
             # 流式构建树结构
             async for item in build_tree_stream(self.project_root):
                 yield item
+                # 同时输出 Markdown 格式的树结构
+                item_data = json.loads(item)
+                if item_data.get("type") in ["directory", "file"]:
+                    yield item_data["display"] + "\n"
 
+            # 结束 Markdown 代码块
+            yield "```\n"
+            
             # 发送完成信号
             yield json.dumps({
                 "type": "structure_complete",

@@ -296,6 +296,7 @@ class ExpertService:
             # 创建流式回调
             stream_data = []
             assistant_response = ""
+            pending_newlines = []  # 存储待发送的回车符号
 
             def stream_callback(event_type, data):
                 logger.info(f"🌊 流式回调: {event_type} - {str(data)[:100]}..." if len(
@@ -305,6 +306,8 @@ class ExpertService:
                 # 保存工具调用和工具结果到历史记录
                 if self.enable_history:
                     if event_type == 'tool_call' and isinstance(data, list):
+                        # 在工具调用前添加回车符号
+                        pending_newlines.append("before_tool_call")
                         # 保存工具调用信息
                         for tool_call in data:
                             if isinstance(tool_call, dict):
@@ -324,6 +327,8 @@ class ExpertService:
                                     conversation_id, "tool", tool_result_content,
                                     {"type": "tool_result", "tool_call_id": tool_result.get('tool_call_id')}
                                 ))
+                        # 在工具结果后添加回车符号
+                        pending_newlines.append("after_tool_result")
 
             logger.info(f"🌊 创建流式AI客户端，会话ID: {conversation_id}")
 
@@ -338,8 +343,17 @@ class ExpertService:
             logger.info(f"🌊 开始流式AI对话处理")
             chunk_count = 0
             assistant_content = ""
+            last_pending_count = 0
 
             async for chunk in ai_client.start_stream():
+                # 检查是否有待发送的回车符号
+                if len(pending_newlines) > last_pending_count:
+                    # 有新的回车符号需要发送
+                    for i in range(last_pending_count, len(pending_newlines)):
+                        newline_type = pending_newlines[i]
+                        logger.info(f"🌊 发送回车符号: {newline_type}")
+                        yield json.dumps({"type": "content", "data": "\n"}, ensure_ascii=False)
+                    last_pending_count = len(pending_newlines)
 
                 chunk_count += 1
                 logger.info(f"🌊 产生第 {chunk_count} 个流式块: {chunk[:50]}..." if len(
@@ -355,6 +369,13 @@ class ExpertService:
                     pass
 
                 yield chunk
+
+            # 处理最后可能剩余的回车符号
+            if len(pending_newlines) > last_pending_count:
+                for i in range(last_pending_count, len(pending_newlines)):
+                    newline_type = pending_newlines[i]
+                    logger.info(f"🌊 发送最后的回车符号: {newline_type}")
+                    yield json.dumps({"type": "content", "data": "\n"}, ensure_ascii=False)
 
             # 保存助手回复到聊天历史
             if self.enable_history and assistant_content.strip():
