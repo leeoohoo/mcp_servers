@@ -146,7 +146,7 @@ class AiRequestHandler:
             'model': self.model_config['model_name'],
             'messages': self.messages,
             'temperature': self.model_config.get('temperature', 0.7),
-            'max_tokens': self.model_config.get('max_tokens', 2000)
+            'max_tokens': 16000
         }
 
         if self.tools:

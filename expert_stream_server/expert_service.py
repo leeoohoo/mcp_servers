@@ -150,7 +150,7 @@ class ExpertService:
                 'base_url': self.base_url,
                 'model_name': self.model_name,
                 'temperature': 0.3,
-                'max_tokens': 300
+                'max_tokens': 16000
             }
 
             ai_handler = AiRequestHandler(

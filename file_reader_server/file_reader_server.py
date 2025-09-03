@@ -22,7 +22,7 @@ from typing_extensions import Annotated
 
 # Whoosh相关导入
 from whoosh.index import create_in, open_dir, exists_in
-from whoosh.fields import Schema, TEXT, ID
+from whoosh.fields import Schema, TEXT, ID, DATETIME
 from whoosh.qparser import QueryParser
 from whoosh.highlight import Highlighter, ContextFragmenter
 
@@ -77,6 +77,7 @@ class FileReaderMCPServer(EnhancedMCPServer):
         @self.streaming_tool(description="📖 **File Line Range Reader** - Reads specific line ranges from a file and returns content with line numbers.\n" +
                          "✨ Features: Precise line-based reading with 1-based indexing, Support for both relative and absolute file paths\n" +
                          "🎯 Use Cases: Code review and analysis, Understanding specific code sections, Debugging and error investigation\n" +
+                         "📋 **Required Parameters**: file_path, start_line, end_line (ALL parameters are mandatory)\n" +
                          "📋 **Usage Example**: {\"file_path\": \"src/main/kotlin/User.kt\", \"start_line\": 10, \"end_line\": 20}\n" +
                          "⚠️ **CRITICAL Output Format**: Returns compressed format like '10:class User {\\n12:private val name\\n14:fun getName()' - gaps in line numbers (e.g., missing 11, 13) indicate empty/blank lines were automatically skipped for efficiency\n" +
                          "💡 Perfect for examining specific code sections without reading entire files. Line number gaps are NORMAL and expected.")
@@ -93,17 +94,14 @@ class FileReaderMCPServer(EnhancedMCPServer):
                          "✨ First attempts intelligent search (Class#method format, code structure understanding), then falls back to global text search if no results found.\n" +
                          "🎯 Use cases: API exploration, code understanding, architecture analysis, configuration lookup, constant search.\n" +
                          "💡 Examples: 'UserService#login', 'BaseConfigPOJO', 'DATABASE_URL', 'TODO'\n" +
+                         "📋 **Parameter**: query - The search text to find in files\n" +
                          "⚠️ **Output Format**: Shows line numbers like '1:code 3:code' - missing line 2 means it was empty/blank.")
         async def search_files_by_content(
-                query_text: Annotated[str, R("Search keywords: supports class names (e.g., UserService), method references (e.g., Class#method), file names, functional descriptions, or exact text matches")],
-                limit: Annotated[int, O("Maximum number of results to return", default=50, minimum=1)] = 50,
-                case_sensitive: Annotated[bool, O("Whether to match case exactly in fallback global search", default=False)] = False,
-                context_lines: Annotated[int, O("Number of context lines to show around matches in fallback search", default=20, minimum=0)] = 20,
-                file_extensions: Annotated[Optional[List[str]], O("File type filter for fallback search: e.g., [\".kt\", \".java\"] to limit search scope")] = None
+                query: Annotated[str, R("The search text to find in files: supports class names (e.g., UserService), method references (e.g., Class#method), file names, functional descriptions, or exact text matches")]
         ) -> AsyncGenerator[str, None]:
             """Combines smart semantic search with global text search for comprehensive results"""
             async for chunk in self.file_reader_service.search_files_by_content_stream(
-                    query_text, limit, case_sensitive, context_lines, file_extensions
+                    query, 20, False, 20, None
             ):
                 yield self._normalize_stream_chunk(chunk)
 

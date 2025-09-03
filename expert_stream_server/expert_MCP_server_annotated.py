@@ -30,15 +30,36 @@ class ExpertMCPServerAnnotated(EnhancedMCPServer):
         """设置工具装饰器"""
 
         @self.streaming_tool(
-            description="Intelligent Development Expert Assistant - Helps you control terminal and execute various development tasks including: file operations, code compilation & building, project management, environment configuration, debugging & testing, etc. Supports querying current workspace content and provides professional development advice and solutions"
+            description="**Development Planner** - Analyzes project status and creates development execution plans\n\n" +
+                        "**Input Parameter**: question (string) - Development requirements or objectives\n\n" +
+                        "**Planning Capabilities**:\n" +
+                        "• Scan project structure and existing codebase\n" +
+                        "• Identify tech stack and development patterns\n" +
+                        "• Create detailed development plans\n" +
+                        "• Plan task execution order and dependencies\n" +
+                        "• Estimate development effort and timeline\n\n" +
+                        "**Output**: Structured development plan containing:\n" +
+                        "- Project analysis results\n" +
+                        "- Priority-ordered task list\n" +
+                        "- Specific execution instructions for each task\n" +
+                        "- File paths and operation types\n" +
+                        "- Inter-task dependencies\n\n" +
+                        "**Usage**: query_expert_stream(question=\"Feature to implement or problem to solve\")"
         )
         async def query_expert_stream(
                 question: Annotated[str, R(
-                    "Describe the development task you need to complete or the problem you're facing, e.g.: 'help me build the project', 'show current directory files', 'run tests', 'configure environment', etc.")]
+                    "Describe the development objective to be planned, for example:\n" +
+                    "• 'Implement user management system'\n" +
+                    "• 'Refactor existing code architecture'\n" +
+                    "• 'Add payment functionality module'\n" +
+                    "• 'Optimize system performance'\n" +
+                    "• 'Fix known bug list'"
+                )]
         ) -> AsyncGenerator[str, None]:
-            """Intelligent Development Expert - Terminal Control Assistant"""
+
+            """Development Assistant - Professional development task support"""
             if not question:
-                yield json.dumps({"error": "Question cannot be empty"}, ensure_ascii=False)
+                yield json.dumps({"error": "Question parameter cannot be empty"}, ensure_ascii=False)
                 return
 
             try:
@@ -48,6 +69,62 @@ class ExpertMCPServerAnnotated(EnhancedMCPServer):
             except Exception as e:
                 # Use base class error handling method
                 yield await self._handle_stream_error("query_expert_stream", e)
+
+        # @self.streaming_tool(
+        #     description="🤖 **Development Assistant** - Professional development task helper\n" +
+        #                 "📝 **Parameter Requirements**: You MUST provide detailed requirements in the 'question' parameter\n" +
+        #                 "📁 **File Operations**: When modifying files, you MUST include specific file paths in your question\n" +
+        #                 "✅ **Best Practices**: More detailed requirements = better results; simpler tasks = faster completion\n" +
+        #                 "🔧 **Supported Features**: Code writing, file operations, project building, environment configuration, debugging & testing\n\n" +
+        #                 "💡 **How to Pass Parameters**:\n" +
+        #                 "Pass your complete request as the 'question' parameter. Include:\n" +
+        #                 "• Task description (what you want to accomplish)\n" +
+        #                 "• Technology stack (Python/Node.js/Java/React, etc.)\n" +
+        #                 "• File paths (if file operations involved)\n" +
+        #                 "• Specific requirements or constraints\n\n" +
+        #                 "🎯 **Parameter Examples**:\n" +
+        #                 "question='Write a Python quicksort algorithm with custom comparison function support'\n" +
+        #                 "question='Create a React button component with loading state in ./src/components/Button.jsx'\n" +
+        #                 "question='Add exception handling to the login function in ./api/auth.py'\n" +
+        #                 "question='Write Jest tests for email validation in ./src/utils/validator.js'\n" +
+        #                 "question='Optimize database queries in ./models/User.java for better performance'\n" +
+        #                 "question='Implement a debounce hook for search functionality in React'\n" +
+        #                 "question='Create a MySQL stored procedure to calculate monthly sales totals'\n" +
+        #                 "question='Add CORS configuration to ./config/express.js file'"
+        # )
+        # async def query_expert_stream(
+        #         question: Annotated[str, R(
+        #             "🎯 **REQUIRED PARAMETER**: Pass your complete development request here.\n\n" +
+        #             "📋 **What to include in this parameter**:\n" +
+        #             "• Detailed task description\n" +
+        #             "• Technology stack specification\n" +
+        #             "• Complete file paths (for file operations)\n" +
+        #             "• Specific requirements or constraints\n\n" +
+        #             "⚠️ **CRITICAL**: File operations require full file paths!\n\n" +
+        #             "✅ **Good parameter examples**:\n" +
+        #             "• 'Write a Python decorator to measure execution time and log results'\n" +
+        #             "• 'Add user authentication middleware to ./src/middleware/auth.js'\n" +
+        #             "• 'Create a responsive navbar component using Tailwind CSS'\n" +
+        #             "• 'Fix memory leak in ./src/services/DataProcessor.java'\n" +
+        #             "• 'Implement Redis caching for user sessions in Node.js Express app'\n\n" +
+        #             "❌ **Avoid vague requests like**:\n" +
+        #             "• 'Help me with code'\n" +
+        #             "• 'Fix this file' (without file path)\n" +
+        #             "• 'Make it better' (without specifics)"
+        #         )]
+        # ) -> AsyncGenerator[str, None]:
+        #     """Development Assistant - Professional development task support"""
+        #     if not question:
+        #         yield json.dumps({"error": "Question parameter cannot be empty"}, ensure_ascii=False)
+        #         return
+        #
+        #     try:
+        #         async for chunk in self.expert_service.ask_expert_stream(question):
+        #             # Use base class standardized method to process chunk
+        #             yield self._normalize_stream_chunk(chunk)
+        #     except Exception as e:
+        #         # Use base class error handling method
+        #         yield await self._handle_stream_error("query_expert_stream", e)
 
         @self.resource(uri="config://expert", name="Expert Config", description="专家服务器配置信息")
         async def expert_config_resource(uri: str) -> Dict[str, Any]:

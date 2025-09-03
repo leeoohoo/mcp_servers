@@ -621,10 +621,6 @@ class FileReaderService:
             # 流式构建树结构
             async for item in build_tree_stream(self.project_root):
                 yield item
-                # 同时输出 Markdown 格式的树结构
-                item_data = json.loads(item)
-                if item_data.get("type") in ["directory", "file"]:
-                    yield item_data["display"] + "\n"
 
             # 结束 Markdown 代码块
             yield "```\n"
