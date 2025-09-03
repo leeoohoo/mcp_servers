@@ -1,0 +1,299 @@
+#!/usr/bin/env python3
+"""
+任务管理器 MCP 服务器（注解版本）
+基于 EnhancedMCPServer 和装饰器系统的任务管理服务器
+
+主要功能:
+1. create_tasks - 创建单个或批量任务（流式输出）
+2. get_next_executable_task - 获取下一个可执行任务（流式输出）
+3. complete_task - 标记任务为已完成（流式输出）
+4. get_task_stats - 获取任务统计信息（流式输出）
+5. query_tasks - 根据条件查询任务（流式输出）
+
+架构优化:
+- 分离业务逻辑到 TaskManagerService
+- 实现按需加载，避免内存过载
+- 使用 LRU 缓存机制
+- 支持配置参数动态调整
+"""
+
+import asyncio
+import logging
+import sys
+from typing import List, Optional, Dict, Any, AsyncGenerator
+from typing_extensions import Annotated
+from pathlib import Path
+
+# 导入任务管理服务
+from task_manager_service import TaskManagerService
+
+# 导入新的框架
+from mcp_framework import (
+    MCPHTTPServer,
+    ConfigManager,
+    setup_logging,
+    check_dependencies,
+    run_server_main
+)
+from mcp_framework.core import EnhancedMCPServer
+
+# 导入装饰器
+from mcp_framework.core.decorators import (
+    Required as R,
+    Optional as O,
+    IntRange,
+    ServerParam,
+    StringParam,
+    BooleanParam,
+    PathParam
+)
+
+# 配置日志
+logger = logging.getLogger("task_manager_server")
+
+
+class TaskManagerServer(EnhancedMCPServer):
+    """基于注解装饰器的任务管理器MCP服务器"""
+
+    def __init__(self):
+        super().__init__(
+            name="task-manager-server",
+            version="2.0.0",
+            description="任务管理器MCP服务器，基于注解装饰器系统提供流式任务管理功能"
+        )
+        # 在构造函数中就初始化服务，使用默认值
+        self.task_manager_service = TaskManagerService()
+        logger.info("TaskManagerServer initialized")
+
+    async def initialize(self) -> None:
+        """初始化服务器（实现基类抽象方法）"""
+        
+        # 调用基类的初始化（如果存在）
+        if hasattr(super(), 'initialize'):
+            await super().initialize()
+        
+        # 获取配置参数并重新初始化服务（如果需要）
+        try:
+            data_dir = self.get_config_value("data_dir")
+            if data_dir and data_dir.strip():
+                # 如果配置了数据目录，重新初始化服务
+                self.task_manager_service = TaskManagerService(data_dir.strip())
+                logger.info(f"Using configured data directory: {data_dir}")
+            else:
+                # 使用默认的数据目录
+                logger.info("Using default data directory: task_data")
+        except Exception as e:
+            logger.warning(f"Failed to get config, using default: {e}")
+        
+        # 确保服务已初始化
+        if self.task_manager_service is None:
+            self.task_manager_service = TaskManagerService()
+            logger.info("Initialized task manager service with defaults")
+    
+    @property
+    def setup_server_params(self):
+        """设置服务器参数"""
+        
+        @self.decorators.server_param
+        def data_dir(
+            self,
+            value: Annotated[str, R("Data directory for storing task files")]
+        ) -> str:
+            """Data directory for task storage
+            
+            Specifies the directory where task data files will be stored.
+            Each conversation-request pair will have its own JSON file.
+            
+            Default: './task_data'
+            """
+            return value
+        
+
+        @self.decorators.server_param
+        def auto_save(
+            self,
+            value: Annotated[bool, R("Whether to automatically save tasks to disk")]
+        ) -> bool:
+            """Auto-save tasks to disk
+            
+            When enabled, tasks are automatically saved to disk after creation
+            or status updates. Disable for better performance if manual saves
+            are preferred.
+            
+            Default: True
+            """
+            return value
+    
+    async def on_config_updated(self, config_key: str, new_value: Any) -> None:
+        """配置更新回调方法"""
+        if config_key == "data_dir":
+            try:
+                # 使用新的动态更新方法
+                if self.task_manager_service:
+                    data_dir = str(new_value).strip() if new_value else ""
+                    result = self.task_manager_service.update_data_dir(data_dir)
+                    
+                    if result.get("success"):
+                        logger.info(f"Config updated successfully: {result['message']}")
+                    else:
+                        logger.error(f"Failed to update data directory: {result.get('error', 'Unknown error')}")
+                else:
+                    # 如果服务未初始化，创建新服务
+                    data_dir = str(new_value).strip() if new_value else "task_data"
+                    self.task_manager_service = TaskManagerService(data_dir)
+                    logger.info(f"Created new task manager service with data dir: {data_dir}")
+            except Exception as e:
+                logger.error(f"Error updating config {config_key}: {e}")
+        elif config_key == "auto_save":
+            try:
+                if self.task_manager_service and hasattr(self.task_manager_service, 'set_auto_save'):
+                    self.task_manager_service.set_auto_save(bool(new_value))
+                    logger.info(f"Auto save updated to: {new_value}")
+            except Exception as e:
+                logger.error(f"Error updating auto save: {e}")
+    
+    def _normalize_stream_chunk(self, chunk: str) -> str:
+        """标准化流式输出块"""
+        if not chunk:
+            return ""
+        
+        # 确保以换行符结尾
+        if not chunk.endswith('\n'):
+            chunk += '\n'
+        
+        return chunk
+
+    @property
+    def setup_tools(self):
+        """设置工具装饰器"""
+
+        @self.streaming_tool(description="📝 **Task Creator** - Creates single or batch tasks with comprehensive validation.\n" +
+                         "\n✨ **Features**: Batch task creation, Field validation, Progress tracking, File-based persistence\n" +
+                         "🎯 **Use Cases**: Project planning, Task breakdown, Workflow management, Team coordination\n" +
+                         "\n📋 **Required Parameters**:\n" +
+                         "• tasks (list): List of task objects, each containing the required fields below\n" +
+                         "• conversation_id (string): Conversation ID for task grouping and isolation\n" +
+                         "• request_id (string): Request ID for fine-grained task organization\n" +
+                         "\n📝 **Task Object Fields** (each task object must contain):\n" +
+                         "• task_title (string): Task title, concise description of the task\n" +
+                         "• target_file (string): Target file path or name\n" +
+                         "• operation (string): Operation type (e.g., create, update, delete, analyze)\n" +
+                         "• specific_operations (string): Detailed operation description\n" +
+                         "• related (string): Related information or context\n" +
+                         "• dependencies (string): Dependent task IDs, comma-separated, empty string if no dependencies\n" +
+                         "\n📄 **Request Example**:\n" +
+                         "{\n" +
+                         "  \"tasks\": [\n" +
+                         "    {\n" +
+                         "      \"task_title\": \"Create User Model\",\n" +
+                         "      \"target_file\": \"models/user.py\",\n" +
+                         "      \"operation\": \"create\",\n" +
+                         "      \"specific_operations\": \"Define User class with id, name, email fields\",\n" +
+                         "      \"related\": \"Core model for user management system\",\n" +
+                         "      \"dependencies\": \"\"\n" +
+                         "    },\n" +
+                         "    {\n" +
+                         "      \"task_title\": \"Create User Service\",\n" +
+                         "      \"target_file\": \"services/user_service.py\",\n" +
+                         "      \"operation\": \"create\",\n" +
+                         "      \"specific_operations\": \"Implement user CRUD operations\",\n" +
+                         "      \"related\": \"Depends on user model\",\n" +
+                         "      \"dependencies\": \"task_id_1\"\n" +
+                         "    }\n" +
+                         "  ],\n" +
+                         "  \"conversation_id\": \"conv_123\",\n" +
+                         "  \"request_id\": \"req_456\"\n" +
+                         "}\n" +
+                         "\n⚠️ **Output Format**: Streams creation progress and saves to conversation_id_request_id.json\n" +
+                         "💡 Perfect for organizing complex projects with dependent tasks and clear tracking.")
+        async def create_tasks(
+                tasks: Annotated[List[Dict[str, Any]], R("List of tasks to create, each containing required fields")],
+                conversation_id: Annotated[str, R("Conversation ID for task grouping and isolation")],
+                request_id: Annotated[str, R("Request ID for fine-grained task organization")]
+        ) -> AsyncGenerator[str, None]:
+            """Creates single or batch tasks with validation and progress tracking"""
+            async for chunk in self.task_manager_service.create_tasks_stream(tasks, conversation_id, request_id):
+                yield self._normalize_stream_chunk(chunk)
+        
+        @self.streaming_tool(description="▶️ **Task Executor** - Finds the next executable task based on dependencies.\n" +
+                         "✨ Features: Dependency resolution, Status checking, Priority ordering, Smart filtering\n" +
+                         "🎯 Use Cases: Workflow execution, Task scheduling, Dependency management, Progress tracking\n" +
+                         "📋 **Required Parameters**: conversation_id, request_id (BOTH parameters are mandatory)\n" +
+                         "⚠️ **Output Format**: Streams task details or 'no executable tasks' message\n" +
+                         "💡 Automatically resolves task dependencies and finds ready-to-execute tasks.")
+        async def get_next_executable_task(
+                conversation_id: Annotated[str, R("Conversation ID for task grouping and isolation")],
+                request_id: Annotated[str, R("Request ID for fine-grained task organization")]
+        ) -> AsyncGenerator[str, None]:
+            """Finds the next executable task based on dependencies and status"""
+            async for chunk in self.task_manager_service.get_next_executable_task_stream(conversation_id, request_id):
+                yield self._normalize_stream_chunk(chunk)
+        
+        @self.streaming_tool(description="✅ **Task Completer** - Marks tasks as completed with validation and persistence.\n" +
+                         "✨ Features: Task validation, Status updates, File persistence, Progress tracking\n" +
+                         "🎯 Use Cases: Task completion, Workflow progression, Status management, Record keeping\n" +
+                         "📋 **Required Parameters**: task_id (parameter is mandatory)\n" +
+                         "⚠️ **Output Format**: Streams completion status and saves to corresponding JSON file\n" +
+                         "💡 Automatically updates task status and maintains data consistency.")
+        async def complete_task(
+                task_id: Annotated[str, R("Task ID to mark as completed")]
+        ) -> AsyncGenerator[str, None]:
+            """Marks a task as completed with validation and persistence"""
+            async for chunk in self.task_manager_service.complete_task_stream(task_id):
+                yield self._normalize_stream_chunk(chunk)
+        
+        @self.streaming_tool(description="📊 **Task Statistics** - Provides comprehensive task analytics and metrics.\n" +
+                         "✨ Features: Status breakdown, Progress tracking, Conversation filtering, Real-time stats\n" +
+                         "🎯 Use Cases: Project monitoring, Progress reporting, Performance analysis, Team oversight\n" +
+                         "📋 **Optional Parameters**: conversation_id (for filtering specific conversations)\n" +
+                         "⚠️ **Output Format**: Streams detailed statistics and task breakdowns\n" +
+                         "💡 Perfect for monitoring project progress and team productivity.")
+        async def get_task_stats(
+                conversation_id: Annotated[Optional[str], O("Conversation ID for filtering specific conversation tasks")] = None
+        ) -> AsyncGenerator[str, None]:
+            """Provides comprehensive task analytics and metrics"""
+            async for chunk in self.task_manager_service.get_task_stats_stream(conversation_id):
+                yield self._normalize_stream_chunk(chunk)
+        
+        @self.streaming_tool(description="🔍 **Task Query Engine** - Advanced task search with multiple filter criteria.\n" +
+                         "✨ Features: Multi-criteria filtering, Keyword search, Status filtering, Conversation scoping\n" +
+                         "🎯 Use Cases: Task discovery, Status monitoring, Content search, Project filtering\n" +
+                         "📋 **Optional Parameters**: conversation_id, status, task_title (all parameters are optional)\n" +
+                         "⚠️ **Output Format**: Streams filtered task results with detailed information\n" +
+                         "💡 Powerful search engine for finding specific tasks across projects.")
+        async def query_tasks(
+                conversation_id: Annotated[Optional[str], O("Conversation ID for filtering specific conversations")] = None,
+                status: Annotated[Optional[str], O("Task status filter: pending, in_progress, completed")] = None,
+                task_title: Annotated[Optional[str], O("Task title keyword for content-based search")] = None
+        ) -> AsyncGenerator[str, None]:
+            """Advanced task search with multiple filter criteria"""
+            async for chunk in self.task_manager_service.query_tasks_stream(conversation_id, status, task_title):
+                yield self._normalize_stream_chunk(chunk)
+
+
+def main():
+    """主函数"""
+    try:
+        # 导入 MCP 框架启动器
+        from mcp_framework import run_server_main
+        
+        # 创建服务器实例
+        server = TaskManagerServer()
+        
+        # 使用 MCP 框架启动器启动服务器
+        run_server_main(
+            server_instance=server,
+            server_name="Task Manager MCP Server",
+            default_port=8004,
+            default_host="localhost",
+            required_dependencies=[]
+        )
+    except Exception as e:
+        logger.error(f"启动服务器失败: {e}")
+        import sys
+        sys.exit(1)
+
+
+# 启动服务器
+if __name__ == "__main__":
+    main()

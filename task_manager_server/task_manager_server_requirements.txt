@@ -1,0 +1,14 @@
+# Task Manager Server Requirements
+# 任务管理器服务器依赖包
+
+# Core MCP Framework
+mcp_framework>=0.1.2
+
+# Type annotations
+typing-extensions>=4.0.0
+
+# Data validation
+pydantic>=2.0.0
+
+# Standard library extensions (for older Python versions)
+pathlib2>=2.3.0
