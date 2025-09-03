@@ -184,6 +184,87 @@ class FileWriteServer(EnhancedMCPServer):
         }
         
         return language_map.get(extension, 'text')
+    
+    async def _show_directory_structure(self, dir_path: str, max_depth: int = 10, include_hidden: bool = False) -> AsyncGenerator[str, None]:
+        """递归展示文件夹结构"""
+        from pathlib import Path
+        
+        # 忽略的目录
+        ignore_dirs = {
+            '__pycache__', '.git', '.svn', '.hg', 'node_modules', '.vscode', '.idea',
+            'build', 'dist', '.pytest_cache', '.mypy_cache', '.tox', 'venv', 'env'
+        }
+        
+        # 支持的文本文件扩展名
+        text_extensions = {
+            '.py', '.js', '.ts', '.tsx', '.jsx', '.java', '.kt', '.swift', '.cpp', '.c', '.h', '.hpp',
+            '.cs', '.go', '.rs', '.php', '.rb', '.dart', '.vue', '.html', '.htm', '.css', '.scss',
+            '.sass', '.less', '.json', '.xml', '.yaml', '.yml', '.toml', '.ini', '.cfg', '.conf',
+            '.sql', '.sh', '.bash', '.zsh', '.fish', '.bat', '.ps1', '.dockerfile', '.makefile',
+            '.cmake', '.gradle', '.properties', '.env', '.gitignore', '.md', '.txt', '.log'
+        }
+        
+        async def build_tree_stream(path: Path, prefix: str = "", depth: int = 0):
+            if depth > max_depth:
+                return
+            
+            try:
+                # 获取目录下的所有项目
+                entries = list(path.iterdir())
+                
+                # 过滤隐藏文件和忽略的目录
+                if not include_hidden:
+                    entries = [e for e in entries if not e.name.startswith('.')]
+                
+                # 过滤忽略的目录
+                entries = [e for e in entries if not (e.is_dir() and e.name in ignore_dirs)]
+                
+                # 排序：目录在前，文件在后
+                entries.sort(key=lambda x: (x.is_file(), x.name.lower()))
+                
+                for i, entry in enumerate(entries):
+                    is_last = i == len(entries) - 1
+                    current_prefix = "└── " if is_last else "├── "
+                    next_prefix = "    " if is_last else "│   "
+                    
+                    if entry.is_dir():
+                        yield f"{prefix}{current_prefix}{entry.name}/\n"
+                        
+                        # 递归处理子目录
+                        async for child_item in build_tree_stream(entry, prefix + next_prefix, depth + 1):
+                            yield child_item
+                    else:
+                        # 只对支持的文本文件计算行数
+                        line_info = ""
+                        if entry.suffix.lower() in text_extensions:
+                            try:
+                                with open(entry, 'r', encoding='utf-8') as f:
+                                    line_count = sum(1 for _ in f)
+                                line_info = f" ({line_count} lines)"
+                            except (UnicodeDecodeError, PermissionError):
+                                line_info = " (no access)"
+                            except Exception:
+                                line_info = ""
+                        
+                        yield f"{prefix}{current_prefix}{entry.name}{line_info}\n"
+                    
+                    # 每10个条目暂停一下
+                    if (i + 1) % 10 == 0:
+                        await asyncio.sleep(0.01)
+            
+            except PermissionError:
+                yield f"{prefix}❌ Permission denied\n"
+        
+        # 输出目录结构
+        path = Path(dir_path)
+        yield f"\n📁 目录结构: {path.name}\n\n```\n"
+        
+        # 流式构建树结构
+        async for item in build_tree_stream(path):
+            yield item
+        
+        # 结束代码块
+        yield "```\n"
         
     
     async def initialize(self):
@@ -191,7 +272,7 @@ class FileWriteServer(EnhancedMCPServer):
         self.logger.info("FileWriteServer 初始化完成")
     
     def _validate_file_access(self, file_path: str) -> str:
-        """验证文件访问权限"""
+        """验证文件或目录访问权限"""
         # 获取配置
         project_root = self.get_config_value("project_root", "")
         max_file_size_mb = self.get_config_value("max_file_size", 10)
@@ -206,18 +287,19 @@ class FileWriteServer(EnhancedMCPServer):
             else:
                 file_path = os.path.abspath(file_path)
         
-        # 检查文件是否存在
+        # 检查文件或目录是否存在
         if not os.path.exists(file_path):
-            raise FileNotFoundError(f"文件不存在: {file_path}")
+            raise FileNotFoundError(f"文件或目录不存在: {file_path}")
         
-        # 检查是否为隐藏文件
+        # 检查是否为隐藏文件或目录
         if not enable_hidden_files and os.path.basename(file_path).startswith('.'):
-            raise PermissionError("不允许访问隐藏文件")
+            raise PermissionError("不允许访问隐藏文件或目录")
         
-        # 检查文件大小
-        file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
-        if file_size_mb > max_file_size_mb:
-            raise ValueError(f"文件大小 ({file_size_mb:.2f}MB) 超过限制 ({max_file_size_mb}MB)")
+        # 只对文件检查大小限制，目录不检查
+        if os.path.isfile(file_path):
+            file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
+            if file_size_mb > max_file_size_mb:
+                raise ValueError(f"文件大小 ({file_size_mb:.2f}MB) 超过限制 ({max_file_size_mb}MB)")
         
         return file_path
     
@@ -292,7 +374,7 @@ class FileWriteServer(EnhancedMCPServer):
                         "• `edit` - Modify file content (single line or multi-line replacement)\n" +
                         "• `insert` - Insert new content at specified position\n" +
                         "• `delete` - Delete specified line or line range\n" +
-                        "• `view` - View file content (entire file or specified range)\n" +
+                        "• `view` - View file content (entire file or specified range) or directory structure\n" +
                         "• `remove` - Delete entire file\n" +
                         "\n📋 **Parameter Details**:\n" +
                         "\n**Parameter: `file_path`** (Required):\n" +
@@ -308,7 +390,7 @@ class FileWriteServer(EnhancedMCPServer):
                         "• `edit`: Must pass line parameter - specify line number or range to modify\n" +
                         "• `insert`: Must pass line parameter - specify line number for insertion position\n" +
                         "• `delete`: Must pass line parameter - specify line number or range to delete\n" +
-                        "• `view`: Optional line parameter - view entire file if not passed, view specified range if passed\n" +
+                        "• `view`: Optional line parameter - view entire file if not passed, view specified range if passed. If path is a directory, shows directory structure recursively\n" +
                         "• `remove`: No need to pass line parameter\n" +
                         "• Format: Single line '5' or range '5-10' or '1-' (from line 1 to end)\n" +
                         "• Examples: line='1', line='5-10', line='3-', line='-5'\n" +
@@ -416,13 +498,7 @@ class FileWriteServer(EnhancedMCPServer):
                         yield f"\n❌ 文件不存在: {file_path}\n"
                         return
                     
-                    # 创建备份（如果启用）
-                    if auto_backup:
-                        backup_path = f"{file_path}.backup"
-                        shutil.copy2(file_path, backup_path)
-                        yield f"\n💾 已创建备份: {backup_path}\n"
-                    
-                    # 删除文件
+                    # 删除文件（不再创建备份）
                     os.remove(file_path)
                     yield f"\n✅ 文件删除成功: {file_path}\n"
                     return
@@ -480,6 +556,18 @@ class FileWriteServer(EnhancedMCPServer):
                     yield f"\n✅ 删除完成! 文件: {saved_path}\n"
                     
                 elif action == "view":
+                    # 检查是否为目录
+                    if os.path.isdir(validated_path):
+                        yield f"\n📁 检测到目录，展示目录结构...\n"
+                        
+                        # 展示目录结构
+                        async for chunk in self._show_directory_structure(validated_path, max_depth=10, include_hidden=False):
+                            yield chunk
+                        
+                        yield f"\n✅ 目录结构展示完成!\n"
+                        return
+                    
+                    # 文件查看逻辑
                     actual_start = start_line or 1
                     actual_end = end_line or modifier.get_line_count()
                     markdown_language = self._get_markdown_language(validated_path)
