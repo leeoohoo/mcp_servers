@@ -31,6 +31,7 @@ class Task:
     status: str = "pending"  # pending, in_progress, completed
     created_at: str = None
     updated_at: str = None
+    viewed_count: int = 0  # 记录任务被查看的次数
     
     def __post_init__(self):
         if self.created_at is None:
@@ -68,6 +69,9 @@ class TaskManagerService:
                 with open(file_path, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     for task_data in data.get('tasks', []):
+                        # 为旧数据提供 viewed_count 默认值
+                        if 'viewed_count' not in task_data:
+                            task_data['viewed_count'] = 0
                         task = Task(**task_data)
                         tasks[task.id] = task
 
@@ -171,8 +175,11 @@ class TaskManagerService:
         yield f"\n📊 总结: 成功创建 {len(created_tasks)} 个任务，失败 {len(errors)} 个\n"
     
     async def get_next_executable_task_stream(self, conversation_id: str, request_id: str) -> AsyncGenerator[str, None]:
-        """获取下一个可执行任务的流式版本 - 完全按需加载"""
-        yield "🔍 正在查找下一个可执行任务...\n"
+        """获取下一个可执行任务的流式版本 - 完全按需加载
+        
+        修改逻辑：如果已有执行中的任务，则返回该任务而不是查找新任务
+        """
+        yield "🔍 正在查找可执行任务...\n"
         
         # 从文件加载任务
         file_path = self._get_data_file_path(conversation_id, request_id)
@@ -185,7 +192,38 @@ class TaskManagerService:
             yield "❌ 任务文件为空\n"
             return
         
-        # 查找可执行任务
+        # 首先检查是否已有执行中的任务
+        in_progress_tasks = [task for task in tasks_dict.values() if task.status == 'in_progress']
+        
+        if in_progress_tasks:
+            # 如果有执行中的任务，返回第一个（按创建时间排序）
+            current_task = min(in_progress_tasks, key=lambda t: t.created_at)
+            
+            # 增加查看次数
+            current_task.viewed_count += 1
+            current_task.updated_at = datetime.now().isoformat()
+            
+            # 保存更新后的任务数据
+            tasks_to_save = list(tasks_dict.values())
+            self._save_tasks_to_file(conversation_id, request_id, tasks_to_save)
+            
+            # 根据查看次数给出不同的提示
+            if current_task.viewed_count == 1:
+                yield f"🔄 发现正在执行的任务: {current_task.task_title} (ID: {current_task.id})\n"
+            else:
+                yield f"🔄 这个任务你已经看过了！任务: {current_task.task_title} (ID: {current_task.id})\n"
+                yield f"📊 查看次数: {current_task.viewed_count} 次\n"
+                yield f"⚠️ 这是同一个任务，你之前已经查看过 {current_task.viewed_count - 1} 次\n"
+            
+            yield f"📄 目标文件: {current_task.target_file}\n"
+            yield f"🔧 操作类型: {current_task.operation}\n"
+            yield f"📝 具体操作: {current_task.specific_operations}\n"
+            yield f"🔗 相关信息: {current_task.related}\n"
+            yield f"📊 依赖关系: {current_task.dependencies}\n"
+            yield f"⚠️ 请先完成当前任务再获取下一个任务\n"
+            return
+        
+        # 如果没有执行中的任务，查找可执行任务
         executable_tasks = []
         for task in tasks_dict.values():
             if task.status == 'pending':
@@ -216,7 +254,7 @@ class TaskManagerService:
         tasks_to_save = list(tasks_dict.values())
         self._save_tasks_to_file(conversation_id, request_id, tasks_to_save)
         
-        yield f"✅ 找到可执行任务: {next_task.task_title} (ID: {next_task.id})\n"
+        yield f"✅ 找到新的可执行任务: {next_task.task_title} (ID: {next_task.id})\n"
         yield f"📄 目标文件: {next_task.target_file}\n"
         yield f"🔧 操作类型: {next_task.operation}\n"
         yield f"📝 具体操作: {next_task.specific_operations}\n"

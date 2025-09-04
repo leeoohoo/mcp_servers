@@ -12,9 +12,10 @@
       "dependencies": "",
       "conversation_id": "d7723fdb-912d-46e1-ad63-0e521b4f495e",
       "request_id": "b8b75f9b-3dc1-4502-9e8c-5cc60a968ded1756892636051",
-      "status": "pending",
+      "status": "in_progress",
       "created_at": "2025-09-03T17:45:03.106432",
-      "updated_at": "2025-09-03T17:45:03.106442"
+      "updated_at": "2025-09-04T09:17:00.118888",
+      "viewed_count": 3
     },
     {
       "id": "168b3dd6-ae79-4932-9725-fb1cecd879ac",
@@ -28,7 +29,8 @@
       "request_id": "b8b75f9b-3dc1-4502-9e8c-5cc60a968ded1756892636051",
       "status": "pending",
       "created_at": "2025-09-03T17:45:03.117789",
-      "updated_at": "2025-09-03T17:45:03.117794"
+      "updated_at": "2025-09-04T09:07:07.330869",
+      "viewed_count": 0
     },
     {
       "id": "77eb7dd4-6dff-41e9-bd01-e9df9b5b3fcb",
@@ -42,7 +44,8 @@
       "request_id": "b8b75f9b-3dc1-4502-9e8c-5cc60a968ded1756892636051",
       "status": "pending",
       "created_at": "2025-09-03T17:45:03.129017",
-      "updated_at": "2025-09-03T17:45:03.129025"
+      "updated_at": "2025-09-03T17:45:03.129025",
+      "viewed_count": 0
     },
     {
       "id": "4ce101a3-def6-4330-903d-9147f17cdcd3",
@@ -56,7 +59,8 @@
       "request_id": "b8b75f9b-3dc1-4502-9e8c-5cc60a968ded1756892636051",
       "status": "pending",
       "created_at": "2025-09-03T17:45:03.140198",
-      "updated_at": "2025-09-03T17:45:03.140202"
+      "updated_at": "2025-09-03T17:45:03.140202",
+      "viewed_count": 0
     },
     {
       "id": "49b8119f-b31a-4a9b-9629-0c59802429ba",
@@ -70,7 +74,8 @@
       "request_id": "b8b75f9b-3dc1-4502-9e8c-5cc60a968ded1756892636051",
       "status": "pending",
       "created_at": "2025-09-03T17:45:03.151344",
-      "updated_at": "2025-09-03T17:45:03.151349"
+      "updated_at": "2025-09-03T17:45:03.151349",
+      "viewed_count": 0
     },
     {
       "id": "782be48e-e663-4b71-be0a-a013e2c2b8b0",
@@ -84,7 +89,8 @@
       "request_id": "b8b75f9b-3dc1-4502-9e8c-5cc60a968ded1756892636051",
       "status": "pending",
       "created_at": "2025-09-03T17:45:03.162507",
-      "updated_at": "2025-09-03T17:45:03.162511"
+      "updated_at": "2025-09-03T17:45:03.162511",
+      "viewed_count": 0
     },
     {
       "id": "948d4734-6fe3-4bb8-a3d3-84c336610ce6",
@@ -98,7 +104,8 @@
       "request_id": "b8b75f9b-3dc1-4502-9e8c-5cc60a968ded1756892636051",
       "status": "pending",
       "created_at": "2025-09-03T17:45:03.173640",
-      "updated_at": "2025-09-03T17:45:03.173644"
+      "updated_at": "2025-09-03T17:45:03.173644",
+      "viewed_count": 0
     },
     {
       "id": "07d44ab2-8892-4eba-894e-fa2086a618ea",
@@ -112,8 +119,9 @@
       "request_id": "b8b75f9b-3dc1-4502-9e8c-5cc60a968ded1756892636051",
       "status": "pending",
       "created_at": "2025-09-03T17:45:03.184790",
-      "updated_at": "2025-09-03T17:45:03.184795"
+      "updated_at": "2025-09-03T17:45:03.184795",
+      "viewed_count": 0
     }
   ],
-  "updated_at": "2025-09-03T17:45:03.196231"
+  "updated_at": "2025-09-04T09:17:00.118936"
 }

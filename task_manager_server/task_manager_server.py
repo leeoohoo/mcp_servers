@@ -215,12 +215,12 @@ class TaskManagerServer(EnhancedMCPServer):
             async for chunk in self.task_manager_service.create_tasks_stream(tasks, conversation_id, request_id):
                 yield self._normalize_stream_chunk(chunk)
         
-        @self.streaming_tool(description="▶️ **Task Executor** - Finds the next executable task based on dependencies.\n" +
-                         "✨ Features: Dependency resolution, Status checking, Priority ordering, Smart filtering\n" +
+        @self.streaming_tool(description="▶️ **Task Executor** - Returns current in-progress task or finds next executable task.\n" +
+                         "✨ Features: In-progress task tracking, Dependency resolution, Status checking, Priority ordering\n" +
                          "🎯 Use Cases: Workflow execution, Task scheduling, Dependency management, Progress tracking\n" +
                          "📋 **Required Parameters**: conversation_id, request_id (BOTH parameters are mandatory)\n" +
-                         "⚠️ **Output Format**: Streams task details or 'no executable tasks' message\n" +
-                         "💡 Automatically resolves task dependencies and finds ready-to-execute tasks.", role="development")
+                         "⚠️ **Output Format**: Streams current in-progress task or next executable task details\n" +
+                         "💡 If a task is already in progress, returns that task. Otherwise finds next executable task.", role="development")
         async def get_next_executable_task(
                 conversation_id: Annotated[str, R("Conversation ID for task grouping and isolation")],
                 request_id: Annotated[str, R("Request ID for fine-grained task organization")]
