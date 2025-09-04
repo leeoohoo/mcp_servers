@@ -31,7 +31,11 @@ class ExpertService:
             base_url=config_values["base_url"],
             model_name=config_values["model_name"],
             system_prompt=config_values["system_prompt"],
-            mcp_servers=mcp_servers
+            mcp_servers=mcp_servers,
+            mongodb_url=config_values.get("mongodb_url", ""),
+            history_limit=config_values.get("history_limit", 10),
+            enable_history=config_values.get("enable_history", True),
+            role=config_values.get("role", "")
         )
         
         # 初始化服务
@@ -42,12 +46,13 @@ class ExpertService:
     def __init__(self, api_key: str, base_url: str = "https://api.openai.com/v1",
                  model_name: str = "gpt-3.5-turbo", system_prompt: str = "",
                  mcp_servers: List[Dict[str, str]] = None, mongodb_url: str = "",
-                 history_limit: int = 10, enable_history: bool = True):
+                 history_limit: int = 10, enable_history: bool = True, role: str = ""):
         self.api_key = api_key
         self.base_url = base_url
         self.model_name = model_name
         self.system_prompt = system_prompt or "你是一个专业的AI助手，能够提供准确、详细和有用的回答。"
         self.mcp_servers = mcp_servers or []
+        self.role = role
 
         # 聊天历史配置
         self.enable_history = enable_history
@@ -59,7 +64,7 @@ class ExpertService:
         # 移除停止标志，使用框架提供的停止功能
 
         # 初始化MCP工具执行器
-        self.mcp_tool_execute = McpToolExecute(self.mcp_servers)
+        self.mcp_tool_execute = McpToolExecute(self.mcp_servers, role=self.role)
 
         # 初始化聊天记录管理器
         self.chat_history = ChatHistoryManager(

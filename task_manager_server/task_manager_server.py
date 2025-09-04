@@ -205,7 +205,7 @@ class TaskManagerServer(EnhancedMCPServer):
                          "  \"request_id\": \"req_456\"\n" +
                          "}\n" +
                          "\n⚠️ **Output Format**: Streams creation progress and saves to conversation_id_request_id.json\n" +
-                         "💡 Perfect for organizing complex projects with dependent tasks and clear tracking.")
+                         "💡 Perfect for organizing complex projects with dependent tasks and clear tracking.", role="planner")
         async def create_tasks(
                 tasks: Annotated[List[Dict[str, Any]], R("List of tasks to create, each containing required fields")],
                 conversation_id: Annotated[str, R("Conversation ID for task grouping and isolation")],
@@ -220,7 +220,7 @@ class TaskManagerServer(EnhancedMCPServer):
                          "🎯 Use Cases: Workflow execution, Task scheduling, Dependency management, Progress tracking\n" +
                          "📋 **Required Parameters**: conversation_id, request_id (BOTH parameters are mandatory)\n" +
                          "⚠️ **Output Format**: Streams task details or 'no executable tasks' message\n" +
-                         "💡 Automatically resolves task dependencies and finds ready-to-execute tasks.")
+                         "💡 Automatically resolves task dependencies and finds ready-to-execute tasks.", role="development")
         async def get_next_executable_task(
                 conversation_id: Annotated[str, R("Conversation ID for task grouping and isolation")],
                 request_id: Annotated[str, R("Request ID for fine-grained task organization")]
@@ -234,7 +234,7 @@ class TaskManagerServer(EnhancedMCPServer):
                          "🎯 Use Cases: Task completion, Workflow progression, Status management, Record keeping\n" +
                          "📋 **Required Parameters**: task_id (parameter is mandatory)\n" +
                          "⚠️ **Output Format**: Streams completion status and saves to corresponding JSON file\n" +
-                         "💡 Automatically updates task status and maintains data consistency.")
+                         "💡 Automatically updates task status and maintains data consistency.", role="inspector")
         async def complete_task(
                 task_id: Annotated[str, R("Task ID to mark as completed")]
         ) -> AsyncGenerator[str, None]:
@@ -247,7 +247,7 @@ class TaskManagerServer(EnhancedMCPServer):
                          "🎯 Use Cases: Project monitoring, Progress reporting, Performance analysis, Team oversight\n" +
                          "📋 **Optional Parameters**: conversation_id (for filtering specific conversations)\n" +
                          "⚠️ **Output Format**: Streams detailed statistics and task breakdowns\n" +
-                         "💡 Perfect for monitoring project progress and team productivity.")
+                         "💡 Perfect for monitoring project progress and team productivity.", role="manager")
         async def get_task_stats(
                 conversation_id: Annotated[Optional[str], O("Conversation ID for filtering specific conversation tasks")] = None
         ) -> AsyncGenerator[str, None]:

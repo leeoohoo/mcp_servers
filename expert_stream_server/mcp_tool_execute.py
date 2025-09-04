@@ -11,10 +11,11 @@ logger = logging.getLogger("McpToolExecute")
 class McpToolExecute:
     """MCP工具执行器"""
 
-    def __init__(self, mcp_servers: List[Dict[str, str]]):
+    def __init__(self, mcp_servers: List[Dict[str, str]], role: str = ""):
         self.mcp_servers = mcp_servers
         self.tools = []
         self.tool_metadata = {}  # 存储工具元数据
+        self.role = role
 
     async def init(self):
         """初始化，构建工具列表"""
@@ -413,6 +414,10 @@ class McpToolExecute:
                         'method': 'tools/list',
                         'params': {}
                     }
+                    
+                    # 如果设置了role，添加到请求参数中
+                    if self.role:
+                        request['params']['role'] = self.role
 
                     async with aiohttp.ClientSession() as session:
                         async with session.post(mcp_server['url'], json=request, timeout=30) as response:
