@@ -40,6 +40,21 @@ class Task:
             self.updated_at = datetime.now().isoformat()
 
 
+@dataclass
+class TaskExecution:
+    """任务执行过程数据模型"""
+    task_id: str
+    execution_process: str
+    created_at: str = None
+    updated_at: str = None
+    
+    def __post_init__(self):
+        if self.created_at is None:
+            self.created_at = datetime.now().isoformat()
+        if self.updated_at is None:
+            self.updated_at = datetime.now().isoformat()
+
+
 class TaskManagerService:
     """任务管理服务类
     
@@ -52,12 +67,21 @@ class TaskManagerService:
         self.data_dir.mkdir(exist_ok=True)
         self.auto_save = True
         
+        # 创建执行过程存储目录
+        self.execution_dir = self.data_dir / "executions"
+        self.execution_dir.mkdir(exist_ok=True)
+        
         logger.info(f"TaskManagerService initialized with data dir: {self.data_dir.absolute()}")
     
     def _get_data_file_path(self, conversation_id: str, request_id: str) -> Path:
         """获取数据文件路径"""
         filename = f"{conversation_id}_{request_id}.json"
         return self.data_dir / filename
+    
+    def _get_execution_file_path(self, task_id: str) -> Path:
+        """获取任务执行过程文件路径"""
+        filename = f"{task_id}_execution.json"
+        return self.execution_dir / filename
     
 
     
@@ -94,6 +118,29 @@ class TaskManagerService:
             logger.info(f"已保存 {len(tasks)} 个任务到 {file_path}")
         except Exception as e:
             logger.error(f"保存任务数据失败: {e}")
+    
+    def _save_task_execution(self, task_execution: TaskExecution):
+        """保存任务执行过程到文件"""
+        try:
+            file_path = self._get_execution_file_path(task_execution.task_id)
+            data = asdict(task_execution)
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            logger.info(f"已保存任务执行过程到 {file_path}")
+        except Exception as e:
+            logger.error(f"保存任务执行过程失败: {e}")
+    
+    def _load_task_execution(self, task_id: str) -> Optional[TaskExecution]:
+        """从文件加载任务执行过程"""
+        file_path = self._get_execution_file_path(task_id)
+        if file_path.exists():
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    return TaskExecution(**data)
+            except Exception as e:
+                logger.error(f"加载任务执行过程失败 {file_path}: {e}")
+        return None
     
     def _get_task_by_id(self, task_id: str) -> Optional[Task]:
         """根据ID获取任务"""
@@ -227,12 +274,12 @@ class TaskManagerService:
         executable_tasks = []
         for task in tasks_dict.values():
             if task.status == 'pending':
-                # 检查依赖是否已完成
+                # 检查依赖是否已完成（completed或dev_completed都算完成）
                 dependencies_met = True
                 if task.dependencies and task.dependencies != "无":
                     for dep_id in task.dependencies.split(','):
                         dep_id = dep_id.strip()
-                        if dep_id and dep_id in tasks_dict and tasks_dict[dep_id].status != 'completed':
+                        if dep_id and dep_id in tasks_dict and tasks_dict[dep_id].status not in ['completed', 'dev_completed']:
                             dependencies_met = False
                             break
                 
@@ -305,7 +352,7 @@ class TaskManagerService:
         yield f"✅ 任务 '{task_found.task_title}' 已标记为完成\n"
         yield f"💾 已保存到文件: {conversation_id}_{request_id}.json\n"
     
-    async def get_task_stats_stream(self, conversation_id: Optional[str] = None) -> AsyncGenerator[str, None]:
+    async def get_task_stats_stream(self, conversation_id: str, request_id: str) -> AsyncGenerator[str, None]:
         """获取任务统计的流式版本 - 完全按需加载"""
         yield "📊 正在统计任务信息...\n"
         
@@ -316,12 +363,12 @@ class TaskManagerService:
                 try:
                     tasks_dict = self._load_tasks_from_file(file)
                     for task in tasks_dict.values():
-                        if conversation_id is None or task.conversation_id == conversation_id:
+                        if task.conversation_id == conversation_id and task.request_id == request_id:
                             all_tasks.append(task)
                 except Exception:
                     continue
         
-        scope = f"会话 {conversation_id}" if conversation_id else "全部"
+        scope = f"会话 {conversation_id} - 请求 {request_id}"
         yield f"🔍 统计范围: {scope}\n"
         
         if not all_tasks:
@@ -332,6 +379,7 @@ class TaskManagerService:
             'total': len(all_tasks),
             'pending': len([t for t in all_tasks if t.status == 'pending']),
             'in_progress': len([t for t in all_tasks if t.status == 'in_progress']),
+            'dev_completed': len([t for t in all_tasks if t.status == 'dev_completed']),
             'completed': len([t for t in all_tasks if t.status == 'completed'])
         }
         
@@ -339,71 +387,21 @@ class TaskManagerService:
         yield f"  📋 总计: {stats['total']} 个\n"
         yield f"  ⏳ 待执行: {stats['pending']} 个\n"
         yield f"  🔄 进行中: {stats['in_progress']} 个\n"
+        yield f"  🚀 开发完成: {stats['dev_completed']} 个\n"
         yield f"  ✅ 已完成: {stats['completed']} 个\n"
         
         if all_tasks:
             yield "\n📝 任务列表:\n"
             for i, task in enumerate(all_tasks, 1):
-                status_emoji = {'pending': '⏳', 'in_progress': '🔄', 'completed': '✅'}.get(task.status, '❓')
+                status_emoji = {
+                    'pending': '⏳', 
+                    'in_progress': '🔄', 
+                    'dev_completed': '🚀',
+                    'completed': '✅'
+                }.get(task.status, '❓')
                 yield f"  {i}. {status_emoji} {task.task_title} (ID: {task.id})\n"
     
-    async def query_tasks_stream(self, conversation_id: Optional[str] = None, status: Optional[str] = None, task_title: Optional[str] = None) -> AsyncGenerator[str, None]:
-        """查询任务的流式版本 - 完全按需加载"""
-        yield "🔍 正在查询任务...\n"
-        
-        # 显示查询条件
-        filters = []
-        if conversation_id:
-            filters.append(f"会话ID: {conversation_id}")
-        if status:
-            filters.append(f"状态: {status}")
-        if task_title:
-            filters.append(f"标题关键词: {task_title}")
-        
-        if filters:
-            yield f"📋 查询条件: {', '.join(filters)}\n"
-        else:
-            yield "📋 查询条件: 无（显示所有任务）\n"
-        
-        # 收集所有任务
-        all_tasks = []
-        for file in self.data_dir.glob("*.json"):
-            if "_" in file.stem:
-                try:
-                    tasks_dict = self._load_tasks_from_file(file)
-                    all_tasks.extend(tasks_dict.values())
-                except Exception:
-                    continue
-        
-        filtered_tasks = all_tasks
-        
-        # 按条件过滤
-        if conversation_id:
-            filtered_tasks = [t for t in filtered_tasks if t.conversation_id == conversation_id]
-            yield f"  🔸 按会话ID过滤后: {len(filtered_tasks)} 个任务\n"
-        
-        if status:
-            filtered_tasks = [t for t in filtered_tasks if t.status == status]
-            yield f"  🔸 按状态过滤后: {len(filtered_tasks)} 个任务\n"
-        
-        if task_title:
-            filtered_tasks = [t for t in filtered_tasks if task_title.lower() in t.task_title.lower()]
-            yield f"  🔸 按标题关键词过滤后: {len(filtered_tasks)} 个任务\n"
-        
-        yield f"\n📊 找到 {len(filtered_tasks)} 个匹配的任务\n"
-        
-        if filtered_tasks:
-            yield "\n📝 匹配的任务列表:\n"
-            for i, task in enumerate(filtered_tasks, 1):
-                status_emoji = {'pending': '⏳', 'in_progress': '🔄', 'completed': '✅'}.get(task.status, '❓')
-                yield f"  {i}. {status_emoji} {task.task_title}\n"
-                yield f"     📁 文件: {task.target_file}\n"
-                yield f"     🔧 操作: {task.operation}\n"
-                yield f"     🆔 ID: {task.id}\n"
-                yield f"     📅 创建时间: {task.created_at}\n\n"
-                await asyncio.sleep(0.1)  # 模拟处理时间
-        else:
-            yield "ℹ️ 没有找到匹配的任务\n"
+
     
 
     
@@ -414,7 +412,9 @@ class TaskManagerService:
             self.data_dir = Path(new_data_dir)
             self.data_dir.mkdir(exist_ok=True)
             
-
+            # 更新执行过程存储目录
+            self.execution_dir = self.data_dir / "executions"
+            self.execution_dir.mkdir(exist_ok=True)
             
             logger.info(f"数据目录已更新: {old_dir} -> {self.data_dir}")
             return {
@@ -435,3 +435,110 @@ class TaskManagerService:
     def set_auto_save(self, auto_save: bool):
         """设置自动保存"""
         self.auto_save = auto_save
+    
+    async def get_current_executing_task_stream(self, conversation_id: str, request_id: str) -> AsyncGenerator[str, None]:
+        """获取当前正在执行或开发完成的任务的流式版本
+        
+        Args:
+            conversation_id: 会话ID
+            request_id: 请求ID
+            
+        Yields:
+            str: 流式输出的任务信息
+        """
+        yield "🔍 正在查找当前执行中或开发完成的任务...\n"
+        
+        # 从文件加载任务
+        file_path = self._get_data_file_path(conversation_id, request_id)
+        if not file_path.exists():
+            yield "❌ 未找到任务文件\n"
+            return
+        
+        tasks_dict = self._load_tasks_from_file(file_path)
+        if not tasks_dict:
+            yield "❌ 任务文件为空\n"
+            return
+        
+        # 查找执行中或开发完成的任务
+        active_tasks = [task for task in tasks_dict.values() if task.status in ['in_progress', 'dev_completed']]
+        
+        if not active_tasks:
+            yield "ℹ️ 当前没有正在执行或开发完成的任务\n"
+            return
+        
+        # 优先返回in_progress任务，如果没有则返回最新的dev_completed任务
+        in_progress_tasks = [task for task in active_tasks if task.status == 'in_progress']
+        dev_completed_tasks = [task for task in active_tasks if task.status == 'dev_completed']
+        
+        if in_progress_tasks:
+            current_task = min(in_progress_tasks, key=lambda t: t.created_at)
+            status_desc = "执行中"
+        else:
+            current_task = max(dev_completed_tasks, key=lambda t: t.updated_at)
+            status_desc = "开发完成"
+        
+        yield f"✅ 找到当前{status_desc}的任务\n"
+        yield f"📋 任务标题: {current_task.task_title}\n"
+        yield f"🆔 任务ID: {current_task.id}\n"
+        yield f"📊 任务状态: {current_task.status}\n"
+        yield f"📄 目标文件: {current_task.target_file}\n"
+        yield f"🔧 操作类型: {current_task.operation}\n"
+        yield f"📝 具体操作: {current_task.specific_operations}\n"
+        yield f"🔗 相关信息: {current_task.related}\n"
+        yield f"📊 依赖关系: {current_task.dependencies}\n"
+        yield f"📅 创建时间: {current_task.created_at}\n"
+        yield f"🔄 更新时间: {current_task.updated_at}\n"
+        yield f"👀 查看次数: {current_task.viewed_count}\n"
+        
+        # 查询任务执行过程
+        task_execution = self._load_task_execution(current_task.id)
+        if task_execution:
+            yield f"\n📋 执行过程信息:\n"
+            yield f"💾 保存时间: {task_execution.created_at}\n"
+            yield f"🔄 更新时间: {task_execution.updated_at}\n"
+            yield f"📝 执行过程:\n{task_execution.execution_process}\n"
+        else:
+            yield f"\n⚠️ 该任务暂无执行过程记录\n"
+        
+        if len(active_tasks) > 1:
+            yield f"⚠️ 注意: 发现 {len(active_tasks)} 个活跃任务（{len(in_progress_tasks)}个执行中，{len(dev_completed_tasks)}个开发完成），显示优先级最高的任务\n"
+    
+    async def save_task_execution_stream(self, task_id: str, execution_process: str) -> AsyncGenerator[str, None]:
+        """保存任务执行过程的流式版本，并将任务状态改为dev_completed"""
+        yield f"💾 正在保存任务 {task_id} 的执行过程...\n"
+        
+        # 验证任务是否存在
+        task = self._get_task_by_id(task_id)
+        if not task:
+            yield f"❌ 任务 {task_id} 不存在\n"
+            return
+        
+        # 创建任务执行过程对象
+        task_execution = TaskExecution(
+            task_id=task_id,
+            execution_process=execution_process
+        )
+        
+        # 保存执行过程到文件
+        self._save_task_execution(task_execution)
+        
+        # 更新任务状态为dev_completed
+        original_status = task.status
+        task.status = 'dev_completed'
+        task.updated_at = datetime.now().isoformat()
+        
+        # 保存更新后的任务数据
+        conversation_id = task.conversation_id
+        request_id = task.request_id
+        file_path = self._get_data_file_path(conversation_id, request_id)
+        tasks_dict = self._load_tasks_from_file(file_path)
+        tasks_dict[task_id] = task
+        tasks_to_save = list(tasks_dict.values())
+        self._save_tasks_to_file(conversation_id, request_id, tasks_to_save)
+        
+        yield f"✅ 任务执行过程已保存\n"
+        yield f"📋 任务标题: {task.task_title}\n"
+        yield f"🆔 任务ID: {task_id}\n"
+        yield f"📝 执行过程长度: {len(execution_process)} 字符\n"
+        yield f"💾 保存时间: {task_execution.created_at}\n"
+        yield f"🔄 任务状态: {original_status} → dev_completed\n"

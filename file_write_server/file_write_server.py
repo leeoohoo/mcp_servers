@@ -507,6 +507,17 @@ class FileWriteServer(EnhancedMCPServer):
                 validated_path = self._validate_file_access(file_path)
                 yield f"\n🔍 文件: {validated_path}\n"
                 
+                # 特殊处理view操作的目录情况
+                if action == "view" and os.path.isdir(validated_path):
+                    yield f"\n📁 检测到目录，展示目录结构...\n"
+                    
+                    # 展示目录结构
+                    async for chunk in self._show_directory_structure(validated_path, max_depth=10, include_hidden=False):
+                        yield chunk
+                    
+                    yield f"\n✅ 目录结构展示完成!\n"
+                    return
+                
                 # 解析行号参数
                 start_line, end_line = None, None
                 if line:
@@ -556,17 +567,6 @@ class FileWriteServer(EnhancedMCPServer):
                     yield f"\n✅ 删除完成! 文件: {saved_path}\n"
                     
                 elif action == "view":
-                    # 检查是否为目录
-                    if os.path.isdir(validated_path):
-                        yield f"\n📁 检测到目录，展示目录结构...\n"
-                        
-                        # 展示目录结构
-                        async for chunk in self._show_directory_structure(validated_path, max_depth=10, include_hidden=False):
-                            yield chunk
-                        
-                        yield f"\n✅ 目录结构展示完成!\n"
-                        return
-                    
                     # 文件查看逻辑
                     actual_start = start_line or 1
                     actual_end = end_line or modifier.get_line_count()
@@ -578,8 +578,7 @@ class FileWriteServer(EnhancedMCPServer):
                     lines = modifier.get_lines(actual_start, actual_end)
                     for i, line in enumerate(lines, actual_start):
                         line_content = line.rstrip()
-                        if line_content.strip():  # 只输出非空行
-                            yield f"{i}:{line_content}\n"
+                        yield f"{i}:{line_content}\n"
                     
                     yield "```\n"
                     yield f"\n✅ 查看完成!\n"

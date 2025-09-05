@@ -71,46 +71,33 @@ class ExpertMCPServerAnnotated(EnhancedMCPServer):
         #         yield await self._handle_stream_error("query_expert_stream", e)
 
         @self.streaming_tool(
-            description="🤖 **Development Assistant** - Professional development task helper\n" +
-                        "📝 **Parameter Requirements**: You MUST provide detailed requirements in the 'question' parameter\n" +
-                        "📁 **File Operations**: When modifying files, you MUST include specific file paths in your question\n" +
-                        "✅ **Best Practices**: More detailed requirements = better results; simpler tasks = faster completion\n" +
-                        "🔧 **Supported Features**: Code writing, file operations, project building, environment configuration, debugging & testing\n\n" +
-                        "💡 **How to Pass Parameters**:\n" +
-                        "Pass your complete request as the 'question' parameter. Include:\n" +
-                        "• Task description (what you want to accomplish)\n" +
-                        "• Technology stack (Python/Node.js/Java/React, etc.)\n" +
-                        "• File paths (if file operations involved)\n" +
-                        "• Specific requirements or constraints\n\n" +
-                        "🎯 **Parameter Examples**:\n" +
-                        "question='Write a Python quicksort algorithm with custom comparison function support'\n" +
-                        "question='Create a React button component with loading state in ./src/components/Button.jsx'\n" +
-                        "question='Add exception handling to the login function in ./api/auth.py'\n" +
-                        "question='Write Jest tests for email validation in ./src/utils/validator.js'\n" +
-                        "question='Optimize database queries in ./models/User.java for better performance'\n" +
-                        "question='Implement a debounce hook for search functionality in React'\n" +
-                        "question='Create a MySQL stored procedure to calculate monthly sales totals'\n" +
-                        "question='Add CORS configuration to ./config/express.js file'"
+            description="🤖 **Development Assistant** - Professional Development Task Executor\n\n" +
+                        "## 🛠️ Core Capabilities:\n" +
+                        "• **Code Development** - Implementation in various programming languages\n" +
+                        "• **Issue Diagnosis** - Bug fixes, performance optimization, error troubleshooting\n" +
+                        "• **Architecture Design** - System design, technology selection, best practices\n" +
+                        "• **File Operations** - Code refactoring, batch modifications, project building\n" +
+                        "• **Environment Setup** - Development environment configuration, deployment setup, toolchain management\n\n" +
+                        "## 📤 Task Execution Results:\n" +
+                        "• **Task Completed** - Successfully completed development task with complete solution\n" +
+                        "• **Task Partially Completed** - Main functionality completed, with notes on incomplete parts and reasons\n" +
+                        "• **Task Failed** - Unable to complete task, detailed failure reasons and suggestions provided\n" +
+                        "• **Need More Information** - Task description insufficient, additional requirements needed\n" +
+                        "• **Task Beyond Capability** - Task complexity exceeds current processing capability\n\n" +
+                        "💡 **Working Method**: Automatically retrieves assigned development tasks, analyzes requirements, executes and provides execution status feedback."
         )
         async def query_expert_stream(
                 question: Annotated[str, R(
-                    "🎯 **REQUIRED PARAMETER**: Pass your complete development request here.\n\n" +
-                    "📋 **What to include in this parameter**:\n" +
-                    "• Detailed task description\n" +
-                    "• Technology stack specification\n" +
-                    "• Complete file paths (for file operations)\n" +
-                    "• Specific requirements or constraints\n\n" +
-                    "⚠️ **CRITICAL**: File operations require full file paths!\n\n" +
-                    "✅ **Good parameter examples**:\n" +
-                    "• 'Write a Python decorator to measure execution time and log results'\n" +
-                    "• 'Add user authentication middleware to ./src/middleware/auth.js'\n" +
-                    "• 'Create a responsive navbar component using Tailwind CSS'\n" +
-                    "• 'Fix memory leak in ./src/services/DataProcessor.java'\n" +
-                    "• 'Implement Redis caching for user sessions in Node.js Express app'\n\n" +
-                    "❌ **Avoid vague requests like**:\n" +
-                    "• 'Help me with code'\n" +
-                    "• 'Fix this file' (without file path)\n" +
-                    "• 'Make it better' (without specifics)"
+                    "🎯 **Task Request Parameter**: Send task request to development assistant\n\n" +
+                    "📋 **Standard Request Format**:\n" +
+                    "• 'I have some development tasks, please help me complete them'\n" +
+                    "• 'There are several development requirements to handle, please assist'\n" +
+                    "• 'Please process the following development tasks'\n\n" +
+                    "📝 **Manager Additional Instructions**:\n" +
+                    "• 'Prioritize urgent tasks, focus on code quality'\n" +
+                    "• 'Follow company coding standards, add detailed comments'\n" +
+                    "• 'These tasks are complex, provide feedback if issues arise'\n" +
+                    "• 'Use latest tech stack, ensure code maintainability'"
                 )]
         ) -> AsyncGenerator[str, None]:
             """Development Assistant - Professional development task support"""
@@ -125,6 +112,44 @@ class ExpertMCPServerAnnotated(EnhancedMCPServer):
             except Exception as e:
                 # Use base class error handling method
                 yield await self._handle_stream_error("query_expert_stream", e)
+
+        # @self.streaming_tool(
+        #     description="🔍 **Task Inspector** - I am a professional task completion verification expert\n\n" +
+        #                 "👋 **Who I Am**: A professional inspector responsible for checking and verifying task execution status\n\n" +
+        #                 "🎯 **My Responsibilities**:\n" +
+        #                 "• Check if tasks are completed according to requirements\n" +
+        #                 "• Verify code quality and best practices\n" +
+        #                 "• Evaluate whether work results meet standards\n" +
+        #                 "• Provide professional improvement suggestions\n\n" +
+        #                 "🔧 **My Capabilities**:\n" +
+        #                 "• Automatically retrieve current task details and requirements\n" +
+        #                 "• Review all work submitted by executors\n" +
+        #                 "• Conduct comprehensive quality assessment and code review\n" +
+        #                 "• Provide clear completion status judgment (Completed/Incomplete)\n\n" +
+        #                 "💬 **How to Communicate with Me**: Simply tell me what you want me to inspect, and I'll handle all technical details automatically"
+        # )
+        # async def query_expert_stream(
+        #         question: Annotated[str, R(
+        #             "💬 **Your Question**: Tell me what you want me to inspect\n\n" +
+        #             "✅ **Common Question Examples**:\n" +
+        #             "• 'Please check if the current task has been completed'\n" +
+        #             "• 'Help me verify the executor's work quality'\n" +
+        #             "• 'Check the task completion status'\n" +
+        #             "• 'Evaluate the current work results'"
+        #         )]
+        # ) -> AsyncGenerator[str, None]:
+        #     """Development Assistant - Professional development task support"""
+        #     if not question:
+        #         yield json.dumps({"error": "Question parameter cannot be empty"}, ensure_ascii=False)
+        #         return
+        #
+        #     try:
+        #         async for chunk in self.expert_service.ask_expert_stream(question):
+        #             # Use base class standardized method to process chunk
+        #             yield self._normalize_stream_chunk(chunk)
+        #     except Exception as e:
+        #         # Use base class error handling method
+        #         yield await self._handle_stream_error("query_expert_stream", e)
 
         @self.resource(uri="config://expert", name="Expert Config", description="专家服务器配置信息")
         async def expert_config_resource(uri: str) -> Dict[str, Any]:

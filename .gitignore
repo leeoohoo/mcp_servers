@@ -16,3 +16,9 @@
 /expert_stream_server/config
 /file_reader_server/__pycache__
 /file_reader_server/config
+/task_manager_server/task_data/executions
+/task_manager_server/task_data
+/task_manager_server/__pycache__
+/task_manager_server/__pycache__
+/task_manager_server/__pycache__
+/task_manager_server/__pycache__
