@@ -26,8 +26,7 @@ class Task:
     specific_operations: str
     related: str
     dependencies: str
-    conversation_id: str
-    request_id: str
+    session_id: str
     status: str = "pending"  # pending, in_progress, completed
     created_at: str = None
     updated_at: str = None
@@ -73,9 +72,9 @@ class TaskManagerService:
         
         logger.info(f"TaskManagerService initialized with data dir: {self.data_dir.absolute()}")
     
-    def _get_data_file_path(self, conversation_id: str, request_id: str) -> Path:
+    def _get_data_file_path(self, session_id: str) -> Path:
         """获取数据文件路径"""
-        filename = f"{conversation_id}_{request_id}.json"
+        filename = f"{session_id}.json"
         return self.data_dir / filename
     
     def _get_execution_file_path(self, task_id: str) -> Path:
@@ -103,13 +102,12 @@ class TaskManagerService:
                 logger.error(f"加载任务数据失败 {file_path}: {e}")
         return tasks
     
-    def _save_tasks_to_file(self, conversation_id: str, request_id: str, tasks: List[Task]):
+    def _save_tasks_to_file(self, session_id: str, tasks: List[Task]):
         """保存任务数据到指定文件"""
         try:
-            file_path = self._get_data_file_path(conversation_id, request_id)
+            file_path = self._get_data_file_path(session_id)
             data = {
-                'conversation_id': conversation_id,
-                'request_id': request_id,
+                'session_id': session_id,
                 'tasks': [asdict(task) for task in tasks],
                 'updated_at': datetime.now().isoformat()
             }
@@ -152,16 +150,16 @@ class TaskManagerService:
         
         return None
     
-    def _get_tasks_by_conversation_request(self, conversation_id: str, request_id: str) -> List[Task]:
-        """获取指定会话和请求的任务"""
-        file_path = self._get_data_file_path(conversation_id, request_id)
+    def _get_tasks_by_session(self, session_id: str) -> List[Task]:
+        """获取指定会话的任务"""
+        file_path = self._get_data_file_path(session_id)
         file_tasks = self._load_tasks_from_file(file_path)
         return list(file_tasks.values())
     
 
     
     async def create_tasks_stream(self, tasks_data: List[Dict[str, Any]], 
-                                conversation_id: str, request_id: str) -> AsyncGenerator[str, None]:
+                                session_id: str) -> AsyncGenerator[str, None]:
         """创建任务（流式输出）"""
         yield f"开始创建 {len(tasks_data)} 个任务...\n"
         
@@ -194,8 +192,7 @@ class TaskManagerService:
                     specific_operations=task_data['specific_operations'],
                     related=task_data['related'],
                     dependencies=task_data['dependencies'],
-                    conversation_id=conversation_id,
-                    request_id=request_id,
+                    session_id=session_id,
                     status=task_data.get('status', 'pending')
                 )
                 
@@ -213,15 +210,15 @@ class TaskManagerService:
         
         # 保存到文件
         if created_tasks:
-            self._save_tasks_to_file(conversation_id, request_id, created_tasks)
-            yield f"\n✅ 成功创建 {len(created_tasks)} 个任务并保存到文件: {conversation_id}_{request_id}.json\n"
+            self._save_tasks_to_file(session_id, created_tasks)
+            yield f"\n✅ 成功创建 {len(created_tasks)} 个任务并保存到文件: {session_id}.json\n"
         
         if errors:
             yield f"❌ 失败 {len(errors)} 个任务\n"
         
         yield f"\n📊 总结: 成功创建 {len(created_tasks)} 个任务，失败 {len(errors)} 个\n"
     
-    async def get_next_executable_task_stream(self, conversation_id: str, request_id: str) -> AsyncGenerator[str, None]:
+    async def get_next_executable_task_stream(self, session_id: str) -> AsyncGenerator[str, None]:
         """获取下一个可执行任务的流式版本 - 完全按需加载
         
         修改逻辑：如果已有执行中的任务，则返回该任务而不是查找新任务
@@ -229,7 +226,7 @@ class TaskManagerService:
         yield "🔍 正在查找可执行任务...\n"
         
         # 从文件加载任务
-        file_path = self._get_data_file_path(conversation_id, request_id)
+        file_path = self._get_data_file_path(session_id)
         if not file_path.exists():
             yield "❌ 未找到任务文件\n"
             return
@@ -252,7 +249,7 @@ class TaskManagerService:
             
             # 保存更新后的任务数据
             tasks_to_save = list(tasks_dict.values())
-            self._save_tasks_to_file(conversation_id, request_id, tasks_to_save)
+            self._save_tasks_to_file(session_id, tasks_to_save)
             
             # 根据查看次数给出不同的提示
             if current_task.viewed_count == 1:
@@ -299,7 +296,7 @@ class TaskManagerService:
         
         # 保存到文件
         tasks_to_save = list(tasks_dict.values())
-        self._save_tasks_to_file(conversation_id, request_id, tasks_to_save)
+        self._save_tasks_to_file(session_id, tasks_to_save)
         
         yield f"✅ 找到新的可执行任务: {next_task.task_title} (ID: {next_task.id})\n"
         yield f"📄 目标文件: {next_task.target_file}\n"
@@ -314,24 +311,20 @@ class TaskManagerService:
         yield f"🔍 正在查找任务 {task_id}...\n"
         
         task_found = None
-        conversation_id = None
-        request_id = None
+        session_id = None
         file_path = None
         
         # 遍历所有任务文件查找任务
         for file in self.data_dir.glob("*.json"):
-            if "_" in file.stem:
-                try:
-                    tasks_dict = self._load_tasks_from_file(file)
-                    if task_id in tasks_dict:
-                        task_found = tasks_dict[task_id]
-                        parts = file.stem.split('_', 1)
-                        conversation_id = parts[0]
-                        request_id = parts[1]
-                        file_path = file
-                        break
-                except Exception:
-                    continue
+            try:
+                tasks_dict = self._load_tasks_from_file(file)
+                if task_id in tasks_dict:
+                    task_found = tasks_dict[task_id]
+                    session_id = file.stem
+                    file_path = file
+                    break
+            except Exception:
+                continue
         
         if not task_found:
             yield f"❌ 任务 {task_id} 不存在\n"
@@ -348,27 +341,24 @@ class TaskManagerService:
         tasks_dict[task_id] = task_found
         tasks_to_save = list(tasks_dict.values())
         
-        self._save_tasks_to_file(conversation_id, request_id, tasks_to_save)
+        self._save_tasks_to_file(session_id, tasks_to_save)
         yield f"✅ 任务 '{task_found.task_title}' 已标记为完成\n"
-        yield f"💾 已保存到文件: {conversation_id}_{request_id}.json\n"
+        yield f"💾 已保存到文件: {session_id}.json\n"
     
-    async def get_task_stats_stream(self, conversation_id: str, request_id: str) -> AsyncGenerator[str, None]:
+    async def get_task_stats_stream(self, session_id: str) -> AsyncGenerator[str, None]:
         """获取任务统计的流式版本 - 完全按需加载"""
         yield "📊 正在统计任务信息...\n"
         
-        # 收集所有任务
-        all_tasks = []
-        for file in self.data_dir.glob("*.json"):
-            if "_" in file.stem:
-                try:
-                    tasks_dict = self._load_tasks_from_file(file)
-                    for task in tasks_dict.values():
-                        if task.conversation_id == conversation_id and task.request_id == request_id:
-                            all_tasks.append(task)
-                except Exception:
-                    continue
+        # 从指定会话文件加载任务
+        file_path = self._get_data_file_path(session_id)
+        if not file_path.exists():
+            yield f"❌ 会话 {session_id} 的任务文件不存在\n"
+            return
         
-        scope = f"会话 {conversation_id} - 请求 {request_id}"
+        tasks_dict = self._load_tasks_from_file(file_path)
+        all_tasks = list(tasks_dict.values())
+        
+        scope = f"会话 {session_id}"
         yield f"🔍 统计范围: {scope}\n"
         
         if not all_tasks:
@@ -436,12 +426,11 @@ class TaskManagerService:
         """设置自动保存"""
         self.auto_save = auto_save
     
-    async def get_current_executing_task_stream(self, conversation_id: str, request_id: str) -> AsyncGenerator[str, None]:
+    async def get_current_executing_task_stream(self, session_id: str) -> AsyncGenerator[str, None]:
         """获取当前正在执行或开发完成的任务的流式版本
         
         Args:
-            conversation_id: 会话ID
-            request_id: 请求ID
+            session_id: 会话ID
             
         Yields:
             str: 流式输出的任务信息
@@ -449,7 +438,7 @@ class TaskManagerService:
         yield "🔍 正在查找当前执行中或开发完成的任务...\n"
         
         # 从文件加载任务
-        file_path = self._get_data_file_path(conversation_id, request_id)
+        file_path = self._get_data_file_path(session_id)
         if not file_path.exists():
             yield "❌ 未找到任务文件\n"
             return
@@ -528,13 +517,12 @@ class TaskManagerService:
         task.updated_at = datetime.now().isoformat()
         
         # 保存更新后的任务数据
-        conversation_id = task.conversation_id
-        request_id = task.request_id
-        file_path = self._get_data_file_path(conversation_id, request_id)
+        session_id = task.session_id
+        file_path = self._get_data_file_path(session_id)
         tasks_dict = self._load_tasks_from_file(file_path)
         tasks_dict[task_id] = task
         tasks_to_save = list(tasks_dict.values())
-        self._save_tasks_to_file(conversation_id, request_id, tasks_to_save)
+        self._save_tasks_to_file(session_id, tasks_to_save)
         
         yield f"✅ 任务执行过程已保存\n"
         yield f"📋 任务标题: {task.task_title}\n"

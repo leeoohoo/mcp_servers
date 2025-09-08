@@ -24,81 +24,47 @@ class ExpertMCPServerAnnotated(EnhancedMCPServer):
             description="AI专家服务器，基于注解装饰器系统提供完整的AI工具调用体系"
         )
         self.expert_service = None
+    
+
 
     @property
     def setup_tools(self):
         """设置工具装饰器"""
-
-        # @self.streaming_tool(
-        #     description="**Development Planner** - Analyzes project status and creates development execution plans\n\n" +
-        #                 "**Input Parameter**: question (string) - Development requirements or objectives\n\n" +
-        #                 "**Planning Capabilities**:\n" +
-        #                 "• Scan project structure and existing codebase\n" +
-        #                 "• Identify tech stack and development patterns\n" +
-        #                 "• Create detailed development plans\n" +
-        #                 "• Plan task execution order and dependencies\n" +
-        #                 "• Estimate development effort and timeline\n\n" +
-        #                 "**Output**: Structured development plan containing:\n" +
-        #                 "- Project analysis results\n" +
-        #                 "- Priority-ordered task list\n" +
-        #                 "- Specific execution instructions for each task\n" +
-        #                 "- File paths and operation types\n" +
-        #                 "- Inter-task dependencies\n\n" +
-        #                 "**Usage**: query_expert_stream(question=\"Feature to implement or problem to solve\")"
-        # )
-        # async def query_expert_stream(
-        #         question: Annotated[str, R(
-        #             "Describe the development objective to be planned, for example:\n" +
-        #             "• 'Implement user management system'\n" +
-        #             "• 'Refactor existing code architecture'\n" +
-        #             "• 'Add payment functionality module'\n" +
-        #             "• 'Optimize system performance'\n" +
-        #             "• 'Fix known bug list'"
-        #         )]
-        # ) -> AsyncGenerator[str, None]:
-        #
-        #     """Development Assistant - Professional development task support"""
-        #     if not question:
-        #         yield json.dumps({"error": "Question parameter cannot be empty"}, ensure_ascii=False)
-        #         return
-        #
-        #     try:
-        #         async for chunk in self.expert_service.ask_expert_stream(question):
-        #             # Use base class standardized method to process chunk
-        #             yield self._normalize_stream_chunk(chunk)
-        #     except Exception as e:
-        #         # Use base class error handling method
-        #         yield await self._handle_stream_error("query_expert_stream", e)
-
-        @self.streaming_tool(
-            description="🤖 **Development Assistant** - Professional Development Task Executor\n\n" +
-                        "## 🛠️ Core Capabilities:\n" +
-                        "• **Code Development** - Implementation in various programming languages\n" +
-                        "• **Issue Diagnosis** - Bug fixes, performance optimization, error troubleshooting\n" +
-                        "• **Architecture Design** - System design, technology selection, best practices\n" +
-                        "• **File Operations** - Code refactoring, batch modifications, project building\n" +
-                        "• **Environment Setup** - Development environment configuration, deployment setup, toolchain management\n\n" +
-                        "## 📤 Task Execution Results:\n" +
-                        "• **Task Completed** - Successfully completed development task with complete solution\n" +
-                        "• **Task Partially Completed** - Main functionality completed, with notes on incomplete parts and reasons\n" +
-                        "• **Task Failed** - Unable to complete task, detailed failure reasons and suggestions provided\n" +
-                        "• **Need More Information** - Task description insufficient, additional requirements needed\n" +
-                        "• **Task Beyond Capability** - Task complexity exceeds current processing capability\n\n" +
-                        "💡 **Working Method**: Automatically retrieves assigned development tasks, analyzes requirements, executes and provides execution status feedback."
+        
+        # 获取当前工具描述和参数描述
+        description = self.server_config.get('tool_description', 
+            "🤖 **Development Assistant** - Professional Development Task Executor\n\n" +
+            "## 🛠️ Core Capabilities:\n" +
+            "• **Code Development** - Implementation in various programming languages\n" +
+            "• **Issue Diagnosis** - Bug fixes, performance optimization, error troubleshooting\n" +
+            "• **Architecture Design** - System design, technology selection, best practices\n" +
+            "• **File Operations** - Code refactoring, batch modifications, project building\n" +
+            "• **Environment Setup** - Development environment configuration, deployment setup, toolchain management\n\n" +
+            "## 📤 Task Execution Results:\n" +
+            "• **Task Completed** - Successfully completed development task with complete solution\n" +
+            "• **Task Partially Completed** - Main functionality completed, with notes on incomplete parts and reasons\n" +
+            "• **Task Failed** - Unable to complete task, detailed failure reasons and suggestions provided\n" +
+            "• **Need More Information** - Task description insufficient, additional requirements needed\n" +
+            "• **Task Beyond Capability** - Task complexity exceeds current processing capability\n\n" +
+            "💡 **Working Method**: Automatically retrieves assigned development tasks, analyzes requirements, executes and provides execution status feedback."
         )
+        
+        parameter_description = self.server_config.get('parameter_description',
+            "🎯 **Task Request Parameter**: Send task request to development assistant\n\n" +
+            "📋 **Standard Request Format**:\n" +
+            "• 'I have some development tasks, please help me complete them'\n" +
+            "• 'There are several development requirements to handle, please assist'\n" +
+            "• 'Please process the following development tasks'\n\n" +
+            "📝 **Manager Additional Instructions**:\n" +
+            "• 'Prioritize urgent tasks, focus on code quality'\n" +
+            "• 'Follow company coding standards, add detailed comments'\n" +
+            "• 'These tasks are complex, provide feedback if issues arise'\n" +
+            "• 'Use latest tech stack, ensure code maintainability'"
+        )
+
+        @self.streaming_tool(description=description)
         async def query_expert_stream(
-                question: Annotated[str, R(
-                    "🎯 **Task Request Parameter**: Send task request to development assistant\n\n" +
-                    "📋 **Standard Request Format**:\n" +
-                    "• 'I have some development tasks, please help me complete them'\n" +
-                    "• 'There are several development requirements to handle, please assist'\n" +
-                    "• 'Please process the following development tasks'\n\n" +
-                    "📝 **Manager Additional Instructions**:\n" +
-                    "• 'Prioritize urgent tasks, focus on code quality'\n" +
-                    "• 'Follow company coding standards, add detailed comments'\n" +
-                    "• 'These tasks are complex, provide feedback if issues arise'\n" +
-                    "• 'Use latest tech stack, ensure code maintainability'"
-                )]
+                question: Annotated[str, R(parameter_description)]
         ) -> AsyncGenerator[str, None]:
             """Development Assistant - Professional development task support"""
             if not question:
@@ -112,44 +78,6 @@ class ExpertMCPServerAnnotated(EnhancedMCPServer):
             except Exception as e:
                 # Use base class error handling method
                 yield await self._handle_stream_error("query_expert_stream", e)
-
-        # @self.streaming_tool(
-        #     description="🔍 **Task Inspector** - I am a professional task completion verification expert\n\n" +
-        #                 "👋 **Who I Am**: A professional inspector responsible for checking and verifying task execution status\n\n" +
-        #                 "🎯 **My Responsibilities**:\n" +
-        #                 "• Check if tasks are completed according to requirements\n" +
-        #                 "• Verify code quality and best practices\n" +
-        #                 "• Evaluate whether work results meet standards\n" +
-        #                 "• Provide professional improvement suggestions\n\n" +
-        #                 "🔧 **My Capabilities**:\n" +
-        #                 "• Automatically retrieve current task details and requirements\n" +
-        #                 "• Review all work submitted by executors\n" +
-        #                 "• Conduct comprehensive quality assessment and code review\n" +
-        #                 "• Provide clear completion status judgment (Completed/Incomplete)\n\n" +
-        #                 "💬 **How to Communicate with Me**: Simply tell me what you want me to inspect, and I'll handle all technical details automatically"
-        # )
-        # async def query_expert_stream(
-        #         question: Annotated[str, R(
-        #             "💬 **Your Question**: Tell me what you want me to inspect\n\n" +
-        #             "✅ **Common Question Examples**:\n" +
-        #             "• 'Please check if the current task has been completed'\n" +
-        #             "• 'Help me verify the executor's work quality'\n" +
-        #             "• 'Check the task completion status'\n" +
-        #             "• 'Evaluate the current work results'"
-        #         )]
-        # ) -> AsyncGenerator[str, None]:
-        #     """Development Assistant - Professional development task support"""
-        #     if not question:
-        #         yield json.dumps({"error": "Question parameter cannot be empty"}, ensure_ascii=False)
-        #         return
-        #
-        #     try:
-        #         async for chunk in self.expert_service.ask_expert_stream(question):
-        #             # Use base class standardized method to process chunk
-        #             yield self._normalize_stream_chunk(chunk)
-        #     except Exception as e:
-        #         # Use base class error handling method
-        #         yield await self._handle_stream_error("query_expert_stream", e)
 
         @self.resource(uri="config://expert", name="Expert Config", description="专家服务器配置信息")
         async def expert_config_resource(uri: str) -> Dict[str, Any]:
@@ -295,6 +223,31 @@ class ExpertMCPServerAnnotated(EnhancedMCPServer):
         ):
             """角色设定参数"""
             pass
+        
+        @self.decorators.server_param("tool_description")
+        async def tool_description_param(
+            param: Annotated[str, StringParam(
+                display_name="工具描述",
+                description="自定义工具的描述信息",
+                default_value="🤖 **Development Assistant** - Professional Development Task Executor",
+                required=False
+            )]
+        ):
+            """工具描述参数"""
+            pass
+        
+        @self.decorators.server_param("parameter_description")
+        async def parameter_description_param(
+            param: Annotated[str, StringParam(
+                display_name="参数描述",
+                description="自定义工具参数的描述信息",
+                default_value="🎯 **Task Request Parameter**: Send task request to development assistant",
+                required=False
+            )]
+        ):
+            """参数描述参数"""
+            pass
+
         
         return True
 

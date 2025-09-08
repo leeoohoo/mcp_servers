@@ -101,6 +101,34 @@ class AiClient:
 
         logger.info(f"🔧 开始执行 {len(tool_calls)} 个工具调用")
 
+        # 🌊 首先yield工具调用信息（工具名称和参数）
+        for tool_call in tool_calls:
+            if isinstance(tool_call, dict):
+                tool_name = tool_call.get('function', {}).get('name') or tool_call.get('name', 'unknown')
+                tool_args = tool_call.get('function', {}).get('arguments', '') or tool_call.get('arguments', '')
+                tool_call_id = tool_call.get('id', '')
+                
+                # 格式化工具调用信息为Markdown格式
+                try:
+                    # 尝试解析参数JSON
+                    if isinstance(tool_args, str):
+                        import json as json_module
+                        args_dict = json_module.loads(tool_args)
+                        formatted_args = "\n".join([f"  - **{k}**: {v}" for k, v in args_dict.items()])
+                    else:
+                        formatted_args = f"  - {tool_args}"
+                except:
+                    formatted_args = f"  - {tool_args}"
+                
+                # yield工具调用开始信息（Markdown格式）
+                tool_call_markdown = f"\n🔧 **调用工具**: `{tool_name}`\n\n**参数**:\n{formatted_args}\n"
+                
+                tool_call_info = json.dumps({
+                    "type": "content",
+                    "data": tool_call_markdown
+                }, ensure_ascii=False)
+                yield tool_call_info
+
         if self.callback:
             self.callback('tool_call', tool_calls)
 
@@ -169,12 +197,28 @@ class AiClient:
         if self.callback:
             self.callback('tool_result', tool_results)
 
-        # 发送工具执行完成信号
-        completion_signal = json.dumps({
-            "type": "tool_complete",
-            "tool_count": len(tool_results)
-        }, ensure_ascii=False)
-        yield completion_signal
+        # 🌊 为每个完成的工具发送结束信号（Markdown格式）
+        for tool_result in tool_results:
+            tool_name = tool_result.get('name', 'unknown')
+            content_length = len(tool_result.get('content', ''))
+            
+            # 格式化工具执行完成信息为Markdown格式
+            tool_end_markdown = f"\n✅ **工具执行完成**: `{tool_name}` (输出长度: {content_length} 字符)\n"
+            
+            tool_end_info = json.dumps({
+                "type": "content",
+                "data": tool_end_markdown
+            }, ensure_ascii=False)
+            yield tool_end_info
+
+        # 发送工具执行完成信号（Markdown格式）
+        if tool_results:
+            completion_markdown = f"\n🎉 **所有工具执行完成** (共 {len(tool_results)} 个工具)\n\n---\n"
+            completion_signal = json.dumps({
+                "type": "content",
+                "data": completion_markdown
+            }, ensure_ascii=False)
+            yield completion_signal
 
     async def chat_completion_stream(self) -> AsyncGenerator[str, None]:
         """流式聊天完成"""

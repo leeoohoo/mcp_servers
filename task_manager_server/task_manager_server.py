@@ -159,8 +159,7 @@ class TaskManagerServer(EnhancedMCPServer):
                          "🎯 **Use Cases**: Project planning, Task breakdown, Workflow management, Team coordination\n" +
                          "\n📋 **Required Parameters**:\n" +
                          "• tasks (list): List of task objects, each containing the required fields below\n" +
-                         "• conversation_id (string): Conversation ID for task grouping and isolation\n" +
-                         "• request_id (string): Request ID for fine-grained task organization\n" +
+                         "• session_id (string): Session ID for task grouping and isolation\n" +
                          "\n📝 **Task Object Fields** (each task object must contain):\n" +
                          "• task_title (string): Task title, concise description of the task\n" +
                          "• target_file (string): Target file path or name\n" +
@@ -188,32 +187,29 @@ class TaskManagerServer(EnhancedMCPServer):
                          "      \"dependencies\": \"task_id_1\"\n" +
                          "    }\n" +
                          "  ],\n" +
-                         "  \"conversation_id\": \"conv_123\",\n" +
-                         "  \"request_id\": \"req_456\"\n" +
+                         "  \"session_id\": \"session_123\"\n" +
                          "}\n" +
-                         "\n⚠️ **Output Format**: Streams creation progress and saves to conversation_id_request_id.json\n" +
+                         "\n⚠️ **Output Format**: Streams creation progress and saves to session_id.json\n" +
                          "💡 Perfect for organizing complex projects with dependent tasks and clear tracking.", role="planner")
         async def create_tasks(
                 tasks: Annotated[List[Dict[str, Any]], R("List of tasks to create, each containing required fields")],
-                conversation_id: Annotated[str, R("Conversation ID for task grouping and isolation")],
-                request_id: Annotated[str, R("Request ID for fine-grained task organization")]
+                session_id: Annotated[str, R("Session ID for task grouping and isolation")]
         ) -> AsyncGenerator[str, None]:
             """Creates single or batch tasks with validation and progress tracking"""
-            async for chunk in self.task_manager_service.create_tasks_stream(tasks, conversation_id, request_id):
+            async for chunk in self.task_manager_service.create_tasks_stream(tasks, session_id):
                 yield self._normalize_stream_chunk(chunk)
         
         @self.streaming_tool(description="▶️ **Task Executor** - Returns current in-progress task or finds next executable task.\n" +
                          "✨ Features: In-progress task tracking, Dependency resolution, Status checking, Priority ordering\n" +
                          "🎯 Use Cases: Workflow execution, Task scheduling, Dependency management, Progress tracking\n" +
-                         "📋 **Required Parameters**: conversation_id, request_id (BOTH parameters are mandatory)\n" +
+                         "📋 **Required Parameters**: session_id (parameter is mandatory)\n" +
                          "⚠️ **Output Format**: Streams current in-progress task or next executable task details\n" +
                          "💡 If a task is already in progress, returns that task. Otherwise finds next executable task.", role="development")
         async def get_next_executable_task(
-                conversation_id: Annotated[str, R("Conversation ID for task grouping and isolation")],
-                request_id: Annotated[str, R("Request ID for fine-grained task organization")]
+                session_id: Annotated[str, R("Session ID for task grouping and isolation")]
         ) -> AsyncGenerator[str, None]:
             """Finds the next executable task based on dependencies and status"""
-            async for chunk in self.task_manager_service.get_next_executable_task_stream(conversation_id, request_id):
+            async for chunk in self.task_manager_service.get_next_executable_task_stream(session_id):
                 yield self._normalize_stream_chunk(chunk)
         
         @self.streaming_tool(description="✅ **Task Completer** - Marks tasks as completed with validation and persistence.\n" +
@@ -230,32 +226,30 @@ class TaskManagerServer(EnhancedMCPServer):
                 yield self._normalize_stream_chunk(chunk)
         
         @self.streaming_tool(description="📊 **Task Statistics** - Provides comprehensive task analytics and metrics.\n" +
-                         "✨ Features: Status breakdown, Progress tracking, Conversation filtering, Real-time stats\n" +
+                         "✨ Features: Status breakdown, Progress tracking, Session filtering, Real-time stats\n" +
                          "🎯 Use Cases: Project monitoring, Progress reporting, Performance analysis, Team oversight\n" +
-                         "📋 **Optional Parameters**: conversation_id (for filtering specific conversations)\n" +
+                         "📋 **Required Parameters**: session_id (parameter is mandatory)\n" +
                          "⚠️ **Output Format**: Streams detailed statistics and task breakdowns\n" +
                          "💡 Perfect for monitoring project progress and team productivity.", role="manager")
         async def get_task_stats(
-                conversation_id: Annotated[str, R("Conversation ID for task grouping and isolation")],
-                request_id: Annotated[str, R("Request ID for fine-grained task organization")]
+                session_id: Annotated[str, R("Session ID for task grouping and isolation")]
         ) -> AsyncGenerator[str, None]:
             """Provides comprehensive task analytics and metrics"""
-            async for chunk in self.task_manager_service.get_task_stats_stream(conversation_id, request_id):
+            async for chunk in self.task_manager_service.get_task_stats_stream(session_id):
                 yield self._normalize_stream_chunk(chunk)
         
 
         @self.streaming_tool(description="🔍 **Current Task Inspector** - Retrieves the currently executing task for inspection.\n" +
                          "✨ Features: Current task tracking, Detailed task information, Execution status monitoring, Execution process viewing\n" +
                          "🎯 Use Cases: Task inspection, Progress monitoring, Current status checking, Quality assurance\n" +
-                         "📋 **Required Parameters**: conversation_id, request_id (BOTH parameters are mandatory)\n" +
+                         "📋 **Required Parameters**: session_id (parameter is mandatory)\n" +
                          "⚠️ **Output Format**: Streams current executing task details with comprehensive information including execution process\n" +
                          "💡 Perfect for inspectors to check what task is currently being executed and view saved execution process.", role="inspector")
         async def get_current_executing_task(
-                conversation_id: Annotated[str, R("Conversation ID for task grouping and isolation")],
-                request_id: Annotated[str, R("Request ID for fine-grained task organization")]
+                session_id: Annotated[str, R("Session ID for task grouping and isolation")]
         ) -> AsyncGenerator[str, None]:
             """Retrieves the currently executing task for inspection"""
-            async for chunk in self.task_manager_service.get_current_executing_task_stream(conversation_id, request_id):
+            async for chunk in self.task_manager_service.get_current_executing_task_stream(session_id):
                 yield self._normalize_stream_chunk(chunk)
         
         @self.streaming_tool(description="💾 **Task Execution Recorder** - Saves task execution process for development tracking.\n" +
