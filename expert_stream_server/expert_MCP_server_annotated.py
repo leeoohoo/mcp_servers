@@ -287,7 +287,15 @@ class ExpertMCPServerAnnotated(EnhancedMCPServer):
                 "base_url": "https://api.openai.com/v1",
                 "model_name": "gpt-3.5-turbo",
                 "system_prompt": "你是一个专业的AI助手，能够提供准确、详细和有用的回答。",
-                "mcp_servers": ""
+                "mcp_servers": "",
+                "mongodb_url": "",
+                "history_limit": 10,
+                "enable_history": True,
+                "role": "",
+                "tool_description": "🤖 **Development Assistant** - Professional Development Task Executor",
+                "parameter_description": "🎯 **Task Request Parameter**: Send task request to development assistant",
+                "summary_interval": 5,
+                "max_rounds": 25
             }
         )
 

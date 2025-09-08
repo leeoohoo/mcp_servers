@@ -175,8 +175,21 @@ class ExpertService:
                 model_config=model_config
             )
 
-            response_messages = await ai_handler.chat_completion()
-            summary = response_messages[-1]['content'] if response_messages else ""
+            # 使用流式方法替代已移除的非流式方法
+            content_chunks = []
+            
+            # 使用流式方法获取响应
+            async for chunk in ai_handler.chat_completion_stream():
+                import json
+                try:
+                    chunk_data = json.loads(chunk)
+                    if chunk_data.get('type') == 'content' and chunk_data.get('data'):
+                        content_chunks.append(chunk_data.get('data'))
+                except Exception as e:
+                    logger.error(f"处理总结流式响应时出错: {e}")
+            
+            # 合并所有内容块作为总结
+            summary = "".join(content_chunks) if content_chunks else ""
 
             logger.info(f"📝 历史记录总结完成: {summary[:50]}...")
             return summary
@@ -236,8 +249,8 @@ class ExpertService:
             ai_client = AiClient(
                 messages, conversation_id, tools, model_config,
                 None, self.mcp_tool_execute,
-                summary_interval=self.summary_interval if hasattr(self, 'summary_interval') else 5,
-                max_rounds=self.max_rounds if hasattr(self, 'max_rounds') else 25
+                summary_interval=self.summary_interval,
+                max_rounds=self.max_rounds
             )
 
             # 开始处理
@@ -351,8 +364,8 @@ class ExpertService:
             ai_client = AiClient(
                 messages, conversation_id, tools, model_config,
                 stream_callback, self.mcp_tool_execute,
-                summary_interval=self.summary_interval if hasattr(self, 'summary_interval') else 5,
-                max_rounds=self.max_rounds if hasattr(self, 'max_rounds') else 25
+                summary_interval=self.summary_interval,
+                max_rounds=self.max_rounds
             )
 
             # AI客户端现在由框架管理

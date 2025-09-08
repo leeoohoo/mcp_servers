@@ -83,13 +83,13 @@ class AiClient:
                 yield chunk
                 
             # 检查是否达到配置的工具调用次数（使用current_round判断，因为每轮递归current_round会+1）
-            if current_round + 1 == self.summary_interval:  # 达到配置的轮数
+            if (current_round + 1) % self.summary_interval == 0:  # 达到配置的轮数
                 logger.info(f"🔄 已达到{self.summary_interval}次工具调用，开始生成总结")
                 
                 # 使用AI总结器生成总结
                 summarized_messages = None
                 async for chunk in self.ai_summarizer.generate_summary_stream(self.messages, self.conversation_id):
-                    if isinstance(chunk, List):
+                    if isinstance(chunk, list):
                         # 如果返回的是消息列表，保存它
                         summarized_messages = chunk
                     else:

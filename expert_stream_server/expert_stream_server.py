@@ -34,7 +34,7 @@ def main():
     run_server_main(
         server_instance=server,
         server_name="Expert Stream Server",
-        default_port=8005,
+        default_port=8083,
         default_host="localhost",
         required_dependencies=["openai", "aiohttp"]
     )
