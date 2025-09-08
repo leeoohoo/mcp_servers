@@ -247,6 +247,32 @@ class ExpertMCPServerAnnotated(EnhancedMCPServer):
         ):
             """参数描述参数"""
             pass
+            
+        @self.decorators.server_param("summary_interval")
+        async def summary_interval_param(
+            param: Annotated[int, ServerParam(
+                display_name="工具调用总结间隔",
+                description="每执行多少轮工具调用后进行一次总结",
+                param_type="integer",
+                default_value=5,
+                required=False
+            )]
+        ):
+            """工具调用总结间隔参数"""
+            pass
+            
+        @self.decorators.server_param("max_rounds")
+        async def max_rounds_param(
+            param: Annotated[int, ServerParam(
+                display_name="最大工具调用轮数",
+                description="AI对话中允许的最大工具调用轮数",
+                param_type="integer",
+                default_value=25,
+                required=False
+            )]
+        ):
+            """最大工具调用轮数参数"""
+            pass
 
         
         return True

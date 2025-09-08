@@ -35,7 +35,9 @@ class ExpertService:
             mongodb_url=config_values.get("mongodb_url", ""),
             history_limit=config_values.get("history_limit", 10),
             enable_history=config_values.get("enable_history", True),
-            role=config_values.get("role", "")
+            role=config_values.get("role", ""),
+            summary_interval=config_values.get("summary_interval", 5),
+            max_rounds=config_values.get("max_rounds", 25)
         )
         
         # 初始化服务
@@ -46,7 +48,8 @@ class ExpertService:
     def __init__(self, api_key: str, base_url: str = "https://api.openai.com/v1",
                  model_name: str = "gpt-3.5-turbo", system_prompt: str = "",
                  mcp_servers: List[Dict[str, str]] = None, mongodb_url: str = "",
-                 history_limit: int = 10, enable_history: bool = True, role: str = ""):
+                 history_limit: int = 10, enable_history: bool = True, role: str = "",
+                 summary_interval: int = 5, max_rounds: int = 25):
         self.api_key = api_key
         self.base_url = base_url
         self.model_name = model_name
@@ -57,6 +60,10 @@ class ExpertService:
         # 聊天历史配置
         self.enable_history = enable_history
         self.history_limit = history_limit
+        
+        # 工具调用总结配置
+        self.summary_interval = summary_interval
+        self.max_rounds = max_rounds
 
         # 生成固定的会话ID，整个服务生命周期内使用同一个
         self.conversation_id = f"expert_conv_{uuid.uuid4().hex[:16]}"
@@ -76,6 +83,8 @@ class ExpertService:
         logger.info(f"Expert Service initialized with model: {self.model_name}")
         logger.info(f"Configured MCP servers: {len(self.mcp_servers)}")
         logger.info(f"Chat history enabled: {enable_history}, limit: {history_limit}")
+        logger.info(f"Summary interval: {summary_interval} rounds")
+        logger.info(f"Max rounds: {max_rounds} rounds")
         logger.info(f"Fixed conversation ID: {self.conversation_id}")
 
     async def initialize(self):
@@ -226,7 +235,9 @@ class ExpertService:
 
             ai_client = AiClient(
                 messages, conversation_id, tools, model_config,
-                None, self.mcp_tool_execute
+                None, self.mcp_tool_execute,
+                summary_interval=self.summary_interval if hasattr(self, 'summary_interval') else 5,
+                max_rounds=self.max_rounds if hasattr(self, 'max_rounds') else 25
             )
 
             # 开始处理
@@ -339,7 +350,9 @@ class ExpertService:
 
             ai_client = AiClient(
                 messages, conversation_id, tools, model_config,
-                stream_callback, self.mcp_tool_execute
+                stream_callback, self.mcp_tool_execute,
+                summary_interval=self.summary_interval if hasattr(self, 'summary_interval') else 5,
+                max_rounds=self.max_rounds if hasattr(self, 'max_rounds') else 25
             )
 
             # AI客户端现在由框架管理

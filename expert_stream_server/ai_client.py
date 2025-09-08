@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, AsyncGenerator
 
 # 使用绝对导入，但不包含包名前缀
 from ai_request_handler import AiRequestHandler
+from ai_summarizer import AiSummarizer
 from mcp_tool_execute import McpToolExecute
 
 # 配置日志
@@ -16,7 +17,8 @@ class AiClient:
 
     def __init__(self, messages: List[Dict[str, Any]], conversation_id: str,
                  tools: List[Dict[str, Any]], model_config: Dict[str, Any],
-                 callback, mcp_tool_execute: McpToolExecute):
+                 callback, mcp_tool_execute: McpToolExecute, summary_interval: int = 5,
+                 max_rounds: int = 25):
         self.messages = messages
         self.conversation_id = conversation_id
         self.tools = tools
@@ -25,6 +27,11 @@ class AiClient:
         self.mcp_tool_execute = mcp_tool_execute
         self.is_aborted = False
         self.current_ai_request_handler = None
+        self.summary_interval = summary_interval
+        self.max_rounds = max_rounds
+        
+        # 初始化AI总结器
+        self.ai_summarizer = AiSummarizer(model_config)
 
     # 非流式方法已移除，只保留流式版本
 
@@ -34,7 +41,7 @@ class AiClient:
             if self.callback:
                 self.callback("conversation_start", {"conversation_id": self.conversation_id})
 
-            async for chunk in self.handle_tool_call_recursively_stream(max_rounds=25, current_round=0):
+            async for chunk in self.handle_tool_call_recursively_stream(max_rounds=self.max_rounds, current_round=0):
                 yield chunk
 
             if self.callback:
@@ -45,7 +52,7 @@ class AiClient:
                 self.callback("error", {"error": str(e)})
             yield json.dumps({"type": "error", "data": str(e)}, ensure_ascii=False)
 
-    async def handle_tool_call_recursively_stream(self, max_rounds: int, current_round: int) -> AsyncGenerator[
+    async def handle_tool_call_recursively_stream(self, max_rounds: int, current_round: int, summarized_messages: List[Dict[str, Any]] = None) -> AsyncGenerator[
         str, None]:
         """递归处理工具调用（流式版本）"""
         logger.info(f"🌊 开始第 {current_round + 1} 轮流式AI对话处理")
@@ -57,6 +64,11 @@ class AiClient:
         if self.is_aborted:
             logger.info('🛑 Request aborted')
             return
+            
+        # 如果提供了总结后的消息，使用它们替换当前消息
+        if summarized_messages:
+            logger.info(f"🔄 使用总结后的消息重新开始对话，消息数量: {len(summarized_messages)}")
+            self.messages = summarized_messages
 
         # 检查是否有待执行的工具调用
         has_pending_tools = (self.messages and
@@ -69,7 +81,28 @@ class AiClient:
             # 🌊 流式执行工具并实时yield内容
             async for chunk in self._execute_pending_tool_calls_stream():
                 yield chunk
-
+                
+            # 检查是否达到配置的工具调用次数（使用current_round判断，因为每轮递归current_round会+1）
+            if current_round + 1 == self.summary_interval:  # 达到配置的轮数
+                logger.info(f"🔄 已达到{self.summary_interval}次工具调用，开始生成总结")
+                
+                # 使用AI总结器生成总结
+                summarized_messages = None
+                async for chunk in self.ai_summarizer.generate_summary_stream(self.messages, self.conversation_id):
+                    if isinstance(chunk, List):
+                        # 如果返回的是消息列表，保存它
+                        summarized_messages = chunk
+                    else:
+                        # 否则是流式内容，直接yield
+                        yield chunk
+                
+                # 如果成功获取到总结后的消息
+                if summarized_messages:
+                    # 使用总结后的消息重新开始对话
+                    async for chunk in self.handle_tool_call_recursively_stream(max_rounds, current_round + 1, summarized_messages):
+                        yield chunk
+                    return
+            
             # 工具执行完成后，进入下一轮递归
             async for chunk in self.handle_tool_call_recursively_stream(max_rounds, current_round + 1):
                 yield chunk
