@@ -87,7 +87,8 @@ class FileReaderMCPServer(EnhancedMCPServer):
                 end_line: Annotated[int, IntRange("Ending line number (1-based indexing, inclusive)", min_val=1)]
         ) -> AsyncGenerator[str, None]:
             """Reads specific line ranges from a file and returns content with line numbers"""
-            async for chunk in self.file_reader_service.read_file_lines_stream(file_path, start_line, end_line):
+            project_root = self.get_config_value('project_root')
+            async for chunk in self.file_reader_service.read_file_lines_stream(file_path, start_line, end_line, Path(project_root)):
                 yield self._normalize_stream_chunk(chunk)
 
         @self.streaming_tool(description="🧠 **Hybrid Intelligent Search** - Combines smart semantic search with global text search for comprehensive results.\n" +
@@ -100,8 +101,9 @@ class FileReaderMCPServer(EnhancedMCPServer):
                 query: Annotated[str, R("The search text to find in files: supports class names (e.g., UserService), method references (e.g., Class#method), file names, functional descriptions, or exact text matches")]
         ) -> AsyncGenerator[str, None]:
             """Combines smart semantic search with global text search for comprehensive results"""
+            project_root = self.get_config_value('project_root')
             async for chunk in self.file_reader_service.search_files_by_content_stream(
-                    query, 20, False, 20, None
+                    query, 20, False, 20, None, Path(project_root)
             ):
                 yield self._normalize_stream_chunk(chunk)
 
@@ -114,7 +116,8 @@ class FileReaderMCPServer(EnhancedMCPServer):
                 file_paths: Annotated[List[str], R("List of file paths: supports relative paths (e.g., src/main/java/User.java) or absolute paths")]
         ) -> AsyncGenerator[str, None]:
             """Retrieves complete content of multiple files at once based on known file path lists"""
-            async for chunk in self.file_reader_service.get_files_content_stream(file_paths):
+            project_root = self.get_config_value('project_root')
+            async for chunk in self.file_reader_service.get_files_content_stream(file_paths, Path(project_root)):
                 yield self._normalize_stream_chunk(chunk)
 
         @self.streaming_tool(description="🏗️ **Project Structure with Line Count** - Retrieves a hierarchical structure of the project with file line counts.\n" +
@@ -126,7 +129,8 @@ class FileReaderMCPServer(EnhancedMCPServer):
                 include_hidden: Annotated[bool, O("Whether to include hidden files", default=False)] = False
         ) -> AsyncGenerator[str, None]:
             """Retrieves a hierarchical structure of the project with file line counts"""
-            async for chunk in self.file_reader_service.get_project_structure_stream(max_depth, include_hidden):
+            project_root = self.get_config_value('project_root')
+            async for chunk in self.file_reader_service.get_project_structure_stream(max_depth, include_hidden, Path(project_root)):
                 yield self._normalize_stream_chunk(chunk)
 
 
@@ -135,7 +139,7 @@ class FileReaderMCPServer(EnhancedMCPServer):
         async def file_reader_config_resource(uri: str) -> Dict[str, Any]:
             """Get file reader configuration information"""
             config_info = {
-                "project_root": str(self.file_reader_service.project_root),
+                "project_root": str(self.file_reader_service.get_project_root()),
                 "supported_extensions": list(self.file_reader_service.text_extensions),
                 "ignored_directories": list(self.file_reader_service.ignore_dirs),
                 "server_config": getattr(self, 'server_config', {})
@@ -159,11 +163,12 @@ class FileReaderMCPServer(EnhancedMCPServer):
             file_types = {}
 
             try:
-                for file_path in self.file_reader_service.project_root.rglob('*'):
+                project_root = self.file_reader_service.get_project_root()
+                for file_path in project_root.rglob('*'):
                     if not file_path.is_file():
                         continue
 
-                    relative_path = file_path.relative_to(self.file_reader_service.project_root)
+                    relative_path = file_path.relative_to(project_root)
                     if self.file_reader_service._should_ignore_path(relative_path):
                         continue
 
@@ -180,7 +185,7 @@ class FileReaderMCPServer(EnhancedMCPServer):
                             pass
 
                 stats_info = {
-                    "project_root": str(self.file_reader_service.project_root),
+                    "project_root": str(project_root),
                     "total_files": total_files,
                     "total_lines": total_lines,
                     "file_types": file_types,
@@ -260,34 +265,16 @@ class FileReaderMCPServer(EnhancedMCPServer):
 
     async def initialize(self) -> None:
         """初始化服务器（实现基类抽象方法）"""
-
-        # 调用基类的初始化（如果存在）
-        if hasattr(super(), 'initialize'):
-            await super().initialize()
-
-        # 获取配置参数并重新初始化服务（如果需要）
-        try:
-            project_root = self.get_config_value("project_root")
-            if project_root and project_root.strip():
-                # 如果配置了项目根目录，重新初始化服务
-                self.file_reader_service = FileReaderService(project_root.strip())
-                logger.info(f"Using configured project root: {project_root}")
-            else:
-                # 使用默认的当前目录
-                logger.info("Using current directory as project root")
-        except Exception as e:
-            logger.warning(f"Failed to get config, using default: {e}")
-
-        # 确保服务已初始化
-        if self.file_reader_service is None:
-            self.file_reader_service = FileReaderService()
-            logger.info("Initialized file reader service with defaults")
+        # 初始化文件读取服务，传递self作为server参数
+        # 服务将通过server获取配置值
+        self.file_reader_service = FileReaderService(server=self)
+        logger.info("Initialized file reader service with server reference")
 
     async def on_config_updated(self, config_key: str, new_value: Any) -> None:
         """配置更新回调方法"""
         if config_key == "project_root":
             try:
-                # 使用新的动态更新方法
+                # 配置已经在基类中更新，只需要通知服务更新索引目录和监控器
                 if self.file_reader_service:
                     project_root = str(new_value).strip() if new_value else ""
                     result = self.file_reader_service.update_project_root(project_root)
@@ -298,11 +285,12 @@ class FileReaderMCPServer(EnhancedMCPServer):
                         logger.error(f"Failed to update project root: {result.get('error', 'Unknown error')}")
                 else:
                     # 如果服务未初始化，创建新服务
+                    self.file_reader_service = FileReaderService()
+                    # 如果有配置值，更新项目根目录
                     if new_value and str(new_value).strip():
-                        self.file_reader_service = FileReaderService(str(new_value).strip())
+                        self.file_reader_service.update_project_root(str(new_value).strip())
                         logger.info(f"Config updated: Created new service with project root: {new_value}")
                     else:
-                        self.file_reader_service = FileReaderService()
                         logger.info("Config updated: Created new service with current directory as project root")
                     
             except Exception as e:

@@ -30,16 +30,36 @@ logger = logging.getLogger("file_reader_service")
 class FileReaderService:
     """文件读取服务类"""
 
-    def __init__(self, project_root: Optional[str] = None):
-        self.project_root = Path(project_root) if project_root else Path.cwd()
-        # 将索引目录放在服务启动目录的data目录下，使用项目文件夹名称区分
+    def __init__(self, server=None):
+        # 保存server引用，用于获取配置
+        self.server = server
+        self.monitor = None  # 文件监控器
+        
+        # 初始化索引目录
         service_root = Path(__file__).parent
         data_dir = service_root / "data"
         data_dir.mkdir(exist_ok=True)
-        project_name = self.project_root.name
+        
+        # 获取项目名称，用于索引目录
+        project_root = self.get_project_root()
+        project_name = project_root.name
         self.index_dir = data_dir / f"whoosh_index_{project_name}"
+    
+    def __init__(self, server=None):
+        # 保存server引用，用于获取配置
+        self.server = server
         self.monitor = None  # 文件监控器
-
+        
+        # 初始化索引目录
+        service_root = Path(__file__).parent
+        data_dir = service_root / "data"
+        data_dir.mkdir(exist_ok=True)
+        
+        # 获取项目名称，用于索引目录
+        project_root = self.get_project_root()
+        project_name = project_root.name
+        self.index_dir = data_dir / f"whoosh_index_{project_name}"
+        
         # 支持的文本文件扩展名
         self.text_extensions = {
             '.txt', '.md', '.py', '.js', '.ts', '.html', '.htm', '.css', '.scss',
@@ -56,13 +76,14 @@ class FileReaderService:
             '.idea', 'dist', 'build', 'target', '.next', '.nuxt', 'coverage',
             '.pytest_cache', '.mypy_cache', 'venv', 'env', '.env', 'whoosh_index'
         }
-
+        
         # 在初始化时创建索引
         self._ensure_index_exists()
         
         # 初始化监控器（如果可用）并默认启动
         if RealTimeIndexMonitor:
-            self.monitor = RealTimeIndexMonitor(str(self.project_root), str(self.index_dir))
+            project_root = self.get_project_root()
+            self.monitor = RealTimeIndexMonitor(str(project_root), str(self.index_dir))
             # 默认启动文件监控
             try:
                 self.monitor.start_monitoring()
@@ -70,7 +91,16 @@ class FileReaderService:
             except Exception as e:
                 logger.error(f"启动文件监控失败: {e}")
         
-        logger.info(f"File Reader Service initialized with project root: {self.project_root}")
+        logger.info(f"File Reader Service initialized with project root: {self.get_project_root()}")
+    
+    def get_project_root(self) -> Path:
+        """从server获取项目根目录配置"""
+        if self.server and hasattr(self.server, 'get_config_value'):
+            project_root = self.server.get_config_value("project_root", "")
+            if project_root:
+                return Path(project_root)
+        # 默认使用当前目录
+        return Path.cwd()
 
     def _get_markdown_language(self, file_path: str) -> str:
         """根据文件扩展名获取markdown语言标识符"""
@@ -145,13 +175,14 @@ class FileReaderService:
                 return True
         return False
 
-    def _resolve_file_path(self, file_path: str) -> Path:
+    def _resolve_file_path(self, file_path: str, root: Optional[Path] = None) -> Path:
         """解析文件路径，支持相对路径和绝对路径"""
         path = Path(file_path)
         if path.is_absolute():
             return path
         else:
-            return self.project_root / path
+            project_root = root if root is not None else self.get_project_root()
+            return project_root / path
 
     def _compress_content(self, content: str, show_line_numbers: bool = True) -> str:
         """压缩内容，去掉空行并显示行号"""
@@ -200,12 +231,13 @@ class FileReaderService:
         # 清空现有索引
         writer.delete_by_term('path', '*')
         
-        for file_path in self.project_root.rglob('*'):
+        project_root = self.get_project_root()
+        for file_path in project_root.rglob('*'):
             if not file_path.is_file():
                 continue
                 
             # 检查是否应该忽略此路径
-            relative_path = file_path.relative_to(self.project_root)
+            relative_path = file_path.relative_to(project_root)
             if self._should_ignore_path(relative_path):
                 continue
                 
@@ -258,7 +290,7 @@ class FileReaderService:
             
         return matches, total_lines
 
-    async def read_file_lines_stream(self, file_path: str, start_line: int, end_line: int) -> AsyncGenerator[str, None]:
+    async def read_file_lines_stream(self, file_path: str, start_line: int, end_line: int, root: Optional[Path] = None) -> AsyncGenerator[str, None]:
         """流式读取文件指定行范围"""
         try:
             # 参数验证
@@ -275,7 +307,7 @@ class FileReaderService:
                 return
 
             # 解析文件路径
-            resolved_path = self._resolve_file_path(file_path)
+            resolved_path = self._resolve_file_path(file_path, root)
 
             if not resolved_path.exists():
                 yield json.dumps({"error": f"文件不存在 {resolved_path}"}, ensure_ascii=False)
@@ -350,7 +382,7 @@ class FileReaderService:
 
     async def search_files_by_content_stream(self, query_text: str, limit: int = 50,
                                              case_sensitive: bool = False, context_lines: int = 20,
-                                             file_extensions: Optional[List[str]] = None) -> AsyncGenerator[str, None]:
+                                             file_extensions: Optional[List[str]] = None, root: Optional[Path] = None) -> AsyncGenerator[str, None]:
         """使用Whoosh进行流式搜索文件内容，只返回文件地址和匹配行详情"""
         try:
             if not query_text:
@@ -397,7 +429,8 @@ class FileReaderService:
                     
                     # 计算相对路径
                     try:
-                        relative_path = str(Path(file_path).relative_to(self.project_root))
+                        project_root = root if root is not None else self.get_project_root()
+                        relative_path = str(Path(file_path).relative_to(project_root))
                     except ValueError:
                         relative_path = file_path
 
@@ -445,7 +478,7 @@ class FileReaderService:
             logger.error(f"搜索文件内容时发生异常: {e}")
             yield json.dumps({"error": f"搜索失败 - {str(e)}"}, ensure_ascii=False)
 
-    async def get_files_content_stream(self, file_paths: List[str]) -> AsyncGenerator[str, None]:
+    async def get_files_content_stream(self, file_paths: List[str], root: Optional[Path] = None) -> AsyncGenerator[str, None]:
         """流式批量读取文件内容"""
         try:
             if not file_paths:
@@ -466,7 +499,7 @@ class FileReaderService:
                     "file_path": file_path
                 }, ensure_ascii=False)
 
-                resolved_path = self._resolve_file_path(file_path)
+                resolved_path = self._resolve_file_path(file_path, root)
 
                 if not resolved_path.exists():
                     yield json.dumps({
@@ -532,14 +565,17 @@ class FileReaderService:
             logger.error(f"批量读取文件时发生异常: {e}")
             yield json.dumps({"error": f"批量读取失败 - {str(e)}"}, ensure_ascii=False)
 
-    async def get_project_structure_stream(self, max_depth: int = 10, include_hidden: bool = False) -> AsyncGenerator[
+    async def get_project_structure_stream(self, max_depth: int = 10, include_hidden: bool = False, root: Optional[Path] = None) -> AsyncGenerator[
         str, None]:
         """流式获取项目结构"""
         try:
+            # 获取项目根目录
+            project_root = root if root is not None else self.get_project_root()
+            
             # 发送开始信号
             yield json.dumps({
                 "type": "structure_start",
-                "project_root": str(self.project_root),
+                "project_root": str(project_root),
                 "max_depth": max_depth
             }, ensure_ascii=False)
 
@@ -569,7 +605,7 @@ class FileReaderService:
                         if entry.is_dir():
                             yield json.dumps({
                                 "type": "directory",
-                                "path": str(entry.relative_to(self.project_root)),
+                                "path": str(entry.relative_to(project_root)),
                                 "display": f"{prefix}{current_prefix}{entry.name}/",
                                 "depth": depth
                             }, ensure_ascii=False)
@@ -592,7 +628,7 @@ class FileReaderService:
 
                             yield json.dumps({
                                 "type": "file",
-                                "path": str(entry.relative_to(self.project_root)),
+                                "path": str(entry.relative_to(project_root)),
                                 "display": f"{prefix}{current_prefix}{entry.name}{line_info}",
                                 "depth": depth
                             }, ensure_ascii=False)
@@ -604,7 +640,7 @@ class FileReaderService:
                 except PermissionError:
                     yield json.dumps({
                         "type": "error",
-                        "path": str(path.relative_to(self.project_root)),
+                        "path": str(path.relative_to(project_root)),
                         "display": f"{prefix}❌ Permission denied",
                         "depth": depth
                     }, ensure_ascii=False)
@@ -612,14 +648,14 @@ class FileReaderService:
             # 输出根目录
             yield json.dumps({
                 "type": "root",
-                "display": f"🏗️ Project Structure: {self.project_root.name}"
+                "display": f"🏗️ Project Structure: {project_root.name}"
             }, ensure_ascii=False)
             
             # 输出 Markdown 格式的项目结构标题
-            yield f"\n## 📁 {self.project_root.name}\n\n```\n"
+            yield f"\n## 📁 {project_root.name}\n\n```\n"
 
             # 流式构建树结构
-            async for item in build_tree_stream(self.project_root):
+            async for item in build_tree_stream(project_root):
                 yield item
 
             # 结束 Markdown 代码块
@@ -639,7 +675,7 @@ class FileReaderService:
         """启动文件监控"""
         if not self.monitor:
             if RealTimeIndexMonitor:
-                self.monitor = RealTimeIndexMonitor(str(self.project_root), str(self.index_dir))
+                self.monitor = RealTimeIndexMonitor(str(self.get_project_root()), str(self.index_dir))
             else:
                 return {"error": "文件监控模块不可用"}
         
@@ -680,7 +716,7 @@ class FileReaderService:
         return {
             "available": True,
             "running": self.monitor.is_running(),
-            "project_root": str(self.project_root),
+            "project_root": str(self.get_project_root()),
             "index_dir": str(self.index_dir)
         }
     
@@ -691,15 +727,18 @@ class FileReaderService:
             if self.monitor and self.monitor.is_running():
                 self.stop_monitoring()
             
-            # 更新项目根目录
-            old_root = str(self.project_root)
-            self.project_root = Path(new_project_root) if new_project_root else Path.cwd()
+            # 获取旧的根目录用于日志记录
+            old_root = str(self.get_project_root())
             
-            # 更新索引目录，放在服务启动目录的data目录下
+            # 更新server中的配置值
+            if self.server and hasattr(self.server, 'set_config_value'):
+                self.server.set_config_value("project_root", new_project_root)
+            
+            # 更新索引目录
+            project_root = self.get_project_root()
             service_root = Path(__file__).parent
             data_dir = service_root / "data"
-            data_dir.mkdir(exist_ok=True)
-            project_name = self.project_root.name
+            project_name = project_root.name
             self.index_dir = data_dir / f"whoosh_index_{project_name}"
             
             # 重新创建索引
@@ -707,15 +746,15 @@ class FileReaderService:
             
             # 重新初始化监控器
             if RealTimeIndexMonitor:
-                self.monitor = RealTimeIndexMonitor(str(self.project_root), str(self.index_dir))
+                self.monitor = RealTimeIndexMonitor(str(project_root), str(self.index_dir))
             
-            logger.info(f"Project root updated from {old_root} to {self.project_root}")
+            logger.info(f"Project root updated from {old_root} to {project_root}")
             
             return {
                 "success": True,
-                "message": f"项目根目录已更新为: {self.project_root}",
+                "message": f"项目根目录已更新为: {project_root}",
                 "old_root": old_root,
-                "new_root": str(self.project_root)
+                "new_root": str(project_root)
             }
             
         except Exception as e:
