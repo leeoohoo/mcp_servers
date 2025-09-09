@@ -17,7 +17,7 @@ from mcp_framework.core.decorators import (
 class PreciseTextModifier:
     """精准文本修改器 - 基于行号的文本编辑工具"""
     
-    def __init__(self, file_path: str, backup: bool = True):
+    def __init__(self, file_path: str, backup: bool = False):
         self.file_path = file_path
         self.original_content = None
         
@@ -278,18 +278,33 @@ class FileWriteServer(EnhancedMCPServer):
         max_file_size_mb = self.get_config_value("max_file_size", 10)
         enable_hidden_files = self.get_config_value("enable_hidden_files", False)
         
+        if not project_root:
+            project_root = os.getcwd()
+        
+        # 规范化project_root路径
+        project_root = os.path.abspath(project_root)
+        
         # 处理相对路径
         if not os.path.isabs(file_path):
-            if project_root:
-                # 清理路径前缀，移除 ./ 等
-                clean_path = file_path.lstrip('./').lstrip('\\')
-                file_path = os.path.join(project_root, clean_path)
-            else:
-                file_path = os.path.abspath(file_path)
+            # 清理路径前缀，移除 ./ 等
+            clean_path = file_path.lstrip('./').lstrip('\\')
+            file_path = os.path.join(project_root, clean_path)
         
         # 检查文件或目录是否存在
         if not os.path.exists(file_path):
-            raise FileNotFoundError(f"文件或目录不存在: {file_path}")
+            # 如果文件不存在，尝试将路径与project_root拼接
+            alternative_path = os.path.join(project_root, os.path.basename(file_path))
+            if os.path.exists(alternative_path):
+                file_path = alternative_path
+            else:
+                raise FileNotFoundError(f"文件或目录不存在: {file_path}")
+        
+        # 安全检查：确保文件路径在project_root下
+        normalized_file_path = os.path.normpath(file_path)
+        normalized_project_root = os.path.normpath(project_root)
+        
+        if not normalized_file_path.startswith(normalized_project_root):
+            raise PermissionError(f"安全限制：只允许访问项目根目录 {project_root} 下的文件")
         
         # 检查是否为隐藏文件或目录
         if not enable_hidden_files and os.path.basename(file_path).startswith('.'):
@@ -349,7 +364,7 @@ class FileWriteServer(EnhancedMCPServer):
             param: Annotated[bool, BooleanParam(
                 display_name="自动备份",
                 description="修改文件前是否自动创建备份",
-                default_value=True,
+                default_value=False,
                 required=False
             )]
         ):
@@ -448,28 +463,44 @@ class FileWriteServer(EnhancedMCPServer):
                 
                 # 新建文件操作
                 if action == "create":
-                    # 处理相对路径
-                    if not os.path.isabs(file_path):
+                    try:
+                        # 获取配置
                         project_root = self.get_config_value("project_root", "")
-                        if project_root:
+                        if not project_root:
+                            project_root = os.getcwd()
+                        
+                        # 规范化project_root路径
+                        project_root = os.path.abspath(project_root)
+                        
+                        # 处理相对路径
+                        if not os.path.isabs(file_path):
                             # 清理路径前缀，移除 ./ 等
                             clean_path = file_path.lstrip('./').lstrip('\\')
                             file_path = os.path.join(project_root, clean_path)
-                        else:
-                            file_path = os.path.abspath(file_path)
-                    
-                    if os.path.exists(file_path):
-                        yield f"\n❌ 文件已存在: {file_path}\n"
+                        
+                        # 安全检查：确保文件路径在project_root下
+                        normalized_file_path = os.path.normpath(file_path)
+                        normalized_project_root = os.path.normpath(project_root)
+                        
+                        if not normalized_file_path.startswith(normalized_project_root):
+                            yield f"\n❌ 安全限制：只允许在项目根目录 {project_root} 下创建文件\n"
+                            return
+                        
+                        if os.path.exists(file_path):
+                            yield f"\n❌ 文件已存在: {file_path}\n"
+                            return
+                        
+                        # 创建目录（如果不存在）
+                        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                        
+                        # 创建文件
+                        with open(file_path, 'w', encoding='utf-8') as f:
+                            f.write(content or "")
+                        
+                        yield f"\n✅ 文件创建成功: {file_path}\n"
+                    except PermissionError as e:
+                        yield f"\n❌ 权限错误: {str(e)}\n"
                         return
-                    
-                    # 创建目录（如果不存在）
-                    os.makedirs(os.path.dirname(file_path), exist_ok=True)
-                    
-                    # 创建文件
-                    with open(file_path, 'w', encoding='utf-8') as f:
-                        f.write(content or "")
-                    
-                    yield f"\n✅ 文件创建成功: {file_path}\n"
                     if content:
                         markdown_language = self._get_markdown_language(file_path)
                         yield f"📄 初始内容已写入:\n\n"
@@ -484,23 +515,45 @@ class FileWriteServer(EnhancedMCPServer):
                 
                 # 删除文件操作
                 elif action == "remove":
-                    # 处理相对路径
-                    if not os.path.isabs(file_path):
+                    try:
+                        # 获取配置
                         project_root = self.get_config_value("project_root", "")
-                        if project_root:
+                        if not project_root:
+                            project_root = os.getcwd()
+                        
+                        # 规范化project_root路径
+                        project_root = os.path.abspath(project_root)
+                        
+                        # 处理相对路径
+                        if not os.path.isabs(file_path):
                             # 清理路径前缀，移除 ./ 等
                             clean_path = file_path.lstrip('./').lstrip('\\')
                             file_path = os.path.join(project_root, clean_path)
-                        else:
-                            file_path = os.path.abspath(file_path)
-                    
-                    if not os.path.exists(file_path):
-                        yield f"\n❌ 文件不存在: {file_path}\n"
-                        return
-                    
-                    # 删除文件（不再创建备份）
-                    os.remove(file_path)
-                    yield f"\n✅ 文件删除成功: {file_path}\n"
+                        
+                        # 如果文件不存在，尝试将路径与project_root拼接
+                        if not os.path.exists(file_path):
+                            alternative_path = os.path.join(project_root, os.path.basename(file_path))
+                            if os.path.exists(alternative_path):
+                                file_path = alternative_path
+                            else:
+                                yield f"\n❌ 文件不存在: {file_path}\n"
+                                return
+                        
+                        # 安全检查：确保文件路径在project_root下
+                        normalized_file_path = os.path.normpath(file_path)
+                        normalized_project_root = os.path.normpath(project_root)
+                        
+                        if not normalized_file_path.startswith(normalized_project_root):
+                            yield f"\n❌ 安全限制：只允许删除项目根目录 {project_root} 下的文件\n"
+                            return
+                        
+                        # 删除文件
+                        os.remove(file_path)
+                        yield f"\n✅ 文件删除成功: {file_path}\n"
+                    except PermissionError as e:
+                        yield f"\n❌ 权限错误: {str(e)}\n"
+                    except Exception as e:
+                        yield f"\n❌ 删除文件时出错: {str(e)}\n"
                     return
                 
                 # 其他操作需要验证文件访问权限
@@ -509,6 +562,21 @@ class FileWriteServer(EnhancedMCPServer):
                 
                 # 特殊处理view操作的目录情况
                 if action == "view" and os.path.isdir(validated_path):
+                    # 获取配置
+                    project_root = self.get_config_value("project_root", "")
+                    if not project_root:
+                        project_root = os.getcwd()
+                    
+                    # 规范化路径
+                    project_root = os.path.abspath(project_root)
+                    normalized_dir_path = os.path.normpath(validated_path)
+                    normalized_project_root = os.path.normpath(project_root)
+                    
+                    # 安全检查：确保目录路径在project_root下
+                    if not normalized_dir_path.startswith(normalized_project_root):
+                        yield f"\n❌ 安全限制：只允许查看项目根目录 {project_root} 下的目录\n"
+                        return
+                    
                     yield f"\n📁 检测到目录，展示目录结构...\n"
                     
                     # 展示目录结构
@@ -527,7 +595,9 @@ class FileWriteServer(EnhancedMCPServer):
                     else:
                         start_line = end_line = int(line)
                 
-                modifier = PreciseTextModifier(validated_path, backup=auto_backup if action != 'view' else False)
+                # 只在非view操作且启用了自动备份时创建备份
+                create_backup = auto_backup and action != 'view'
+                modifier = PreciseTextModifier(validated_path, backup=create_backup)
                 
                 if action == "edit":
                     if not line or not content:
