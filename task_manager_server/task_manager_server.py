@@ -155,11 +155,11 @@ class TaskManagerServer(EnhancedMCPServer):
         """设置工具装饰器"""
 
         @self.streaming_tool(description="📝 **Task Creator** - Creates single or batch tasks with comprehensive validation.\n" +
-                         "\n✨ **Features**: Batch task creation, Field validation, Progress tracking, File-based persistence\n" +
+                         "\n✨ **Features**: Batch task creation, Field validation, Progress tracking, File-based persistence, Direct file overwrite\n" +
                          "🎯 **Use Cases**: Project planning, Task breakdown, Workflow management, Team coordination\n" +
                          "\n📋 **Required Parameters**:\n" +
                          "• tasks (list): List of task objects, each containing the required fields below\n" +
-                         "• session_id (string): Session ID for task grouping and isolation\n" +
+                         "• session_id (string): Session ID for task grouping and isolation (if file exists, it will be overwritten)\n" +
                          "\n📝 **Task Object Fields** (each task object must contain):\n" +
                          "• task_title (string): Task title, concise description of the task\n" +
                          "• target_file (string): Target file path or name\n" +
@@ -167,6 +167,7 @@ class TaskManagerServer(EnhancedMCPServer):
                          "• specific_operations (string): Detailed operation description\n" +
                          "• related (string): Related information or context\n" +
                          "• dependencies (string): Dependent task IDs, comma-separated, empty string if no dependencies\n" +
+                         "• task_id (string, optional): Custom task ID, if not provided a UUID will be generated\n" +
                          "\n📄 **Request Example**:\n" +
                          "{\n" +
                          "  \"tasks\": [\n" +
@@ -185,17 +186,26 @@ class TaskManagerServer(EnhancedMCPServer):
                          "      \"specific_operations\": \"Implement user CRUD operations\",\n" +
                          "      \"related\": \"Depends on user model\",\n" +
                          "      \"dependencies\": \"task_id_1\"\n" +
+                         "    },\n" +
+                         "    {\n" +
+                         "      \"task_id\": \"custom_task_id_2\",\n" +
+                         "      \"task_title\": \"Create User Model\",\n" +
+                         "      \"target_file\": \"models/user.py\",\n" +
+                         "      \"operation\": \"update\",\n" +
+                         "      \"specific_operations\": \"Add address and phone fields to User class\",\n" +
+                         "      \"related\": \"Enhanced user model with contact information\",\n" +
+                         "      \"dependencies\": \"\"\n" +
                          "    }\n" +
                          "  ],\n" +
                          "  \"session_id\": \"session_123\"\n" +
                          "}\n" +
-                         "\n⚠️ **Output Format**: Streams creation progress and saves to session_id.json\n" +
+                         "\n⚠️ **Output Format**: Streams creation progress and saves to session_id.json (overwrites if exists)\n" +
                          "💡 Perfect for organizing complex projects with dependent tasks and clear tracking.", role="planner")
         async def create_tasks(
                 tasks: Annotated[List[Dict[str, Any]], R("List of tasks to create, each containing required fields")],
-                session_id: Annotated[str, R("Session ID for task grouping and isolation")]
+                session_id: Annotated[str, R("Session ID for task grouping and isolation (if file exists, it will be overwritten)")]
         ) -> AsyncGenerator[str, None]:
-            """Creates single or batch tasks with validation and progress tracking"""
+            """Creates single or batch tasks with validation and progress tracking, overwrites existing file if session_id exists"""
             async for chunk in self.task_manager_service.create_tasks_stream(tasks, session_id):
                 yield self._normalize_stream_chunk(chunk)
         

@@ -1,0 +1,137 @@
+sequenceDiagram
+    participant User as 用户
+    participant DA as Development Assistant
+    participant GetTask as get_next_executable_task
+    participant ModifyFile as modify_file
+    participant SaveExec as save_task_execution
+    participant CodeInterp as Code Interpreter
+    participant Memory as Memory Management
+    participant Knowledge as Knowledge Base
+
+    Note over DA: 专业开发助手：持续任务处理 + 文件操作 + 过程文档化
+
+    User->>DA: 发送开发请求 + session_id
+
+    Note over DA: 步骤1：初始化持续任务处理
+    DA->>DA: 验证必需参数：session_id
+
+    alt session_id 缺失
+        DA->>User: 缺少必需参数 请提供session_id
+        Note over DA: 流程终止，等待参数
+    else session_id 存在
+        Note over DA: 开始持续任务执行循环
+
+        DA->>GetTask: get_next_executable_task(session_id)
+        activate GetTask
+        Note over GetTask: 依赖解析 状态检查 优先级排序 智能过滤
+        GetTask-->>DA: 返回第一个可执行任务
+        deactivate GetTask
+
+        Note over DA: 步骤2：持续任务执行循环
+        loop 任务处理循环
+            alt 有可执行任务
+                rect rgb(240, 255, 240)
+                    Note over DA: 单个任务处理步骤
+
+                    Note over DA: 任务分析阶段
+                    DA->>DA: 解析任务内容和task_id
+                    DA->>DA: 理解需求和上下文
+                    DA->>DA: 识别文件操作需求
+                    DA->>DA: 确定技术栈和方法
+
+                    Note over DA: 任务执行阶段
+                    alt 需要文件操作
+                        DA->>ModifyFile: modify_file(action='view', file_path)
+                        activate ModifyFile
+                        ModifyFile-->>DA: 返回现有文件内容
+                        deactivate ModifyFile
+
+                        DA->>DA: 分析文件结构和内容
+
+                        DA->>ModifyFile: modify_file(action='edit/create/insert/delete')
+                        activate ModifyFile
+                        ModifyFile-->>DA: 确认文件操作完成
+                        deactivate ModifyFile
+
+                        alt 关键修改需要验证
+                            DA->>ModifyFile: modify_file(action='view', file_path)
+                            activate ModifyFile
+                            ModifyFile-->>DA: 返回修改后内容验证
+                            deactivate ModifyFile
+                        end
+                    end
+
+                    alt 需要复杂计算或数据分析
+                        DA->>CodeInterp: 执行代码分析计算
+                        activate CodeInterp
+                        CodeInterp-->>DA: 返回分析结果
+                        deactivate CodeInterp
+                    end
+
+                    alt 需要技术知识查询
+                        DA->>Knowledge: 查询技术文档和最佳实践
+                        activate Knowledge
+                        Knowledge-->>DA: 返回相关技术信息
+                        deactivate Knowledge
+                    end
+
+                    Note over DA: 过程文档化阶段
+                    DA->>DA: 记录详细执行步骤
+                    DA->>DA: 文档化文件操作
+                    DA->>DA: 说明技术决策和推理
+                    DA->>DA: 记录挑战和解决方案
+                    DA->>DA: 准备完整执行过程描述
+
+                    Note over DA: 过程保存阶段
+                    DA->>SaveExec: save_task_execution(task_id, detailed_process)
+                    activate SaveExec
+                    Note over SaveExec: 验证过程完整性 记录执行历史 确保可追溯性
+                    SaveExec-->>DA: 确认过程保存成功
+                    deactivate SaveExec
+
+                    alt 过程保存失败
+                        DA->>DA: 记录文档化问题 继续下一任务
+                    end
+                end
+
+                Note over DA: 获取下一任务
+                DA->>GetTask: get_next_executable_task(session_id)
+                activate GetTask
+                GetTask-->>DA: 返回下一个可执行任务或无更多任务
+                deactivate GetTask
+
+            else 无更多可执行任务
+                Note over DA: 任务队列处理完成
+                break 退出循环
+            end
+
+            alt 任务执行出错
+                DA->>DA: 处理任务执行错误
+
+                alt 错误可恢复
+                    Note over DA: 继续处理下一任务
+                else 错误不可恢复
+                    DA->>User: 任务执行失败 错误详情和影响说明
+                    break 停止处理
+                end
+            end
+        end
+
+        Note over DA: 步骤3：生成综合会话摘要
+        DA->>DA: 统计任务处理结果
+        DA->>DA: 汇总文件修改列表
+        DA->>DA: 确认过程文档化状态
+        DA->>DA: 计算执行统计信息
+
+        alt 需要更新用户偏好或项目上下文
+            DA->>Memory: 更新记忆和上下文信息
+            activate Memory
+            Memory-->>DA: 确认记忆更新
+            deactivate Memory
+        end
+
+        Note over DA: 步骤4：返回完整执行报告
+        DA->>User: 返回持续任务执行报告
+    end
+
+    Note over DA: 持续处理流程完成

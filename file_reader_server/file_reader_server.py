@@ -107,18 +107,7 @@ class FileReaderMCPServer(EnhancedMCPServer):
             ):
                 yield self._normalize_stream_chunk(chunk)
 
-        @self.streaming_tool(description="📄 **Batch File Content Reader** - Retrieves complete content of multiple files at once based on known file path lists.\n" +
-                         "✨ Efficiently reads multiple files in a single operation.\n" +
-                         "🎯 Use cases: Reading complete code content from known file paths, analyzing implementation details of multiple related files.\n" +
-                         "💡 Examples: Reading source files for a specific module or component\n" +
-                         "⚠️ **Output Format**: Returns compressed format '1:code\\n3:code' - gaps in line numbers indicate empty/blank lines were skipped.")
-        async def get_files_content(
-                file_paths: Annotated[List[str], R("List of file paths: supports relative paths (e.g., src/main/java/User.java) or absolute paths")]
-        ) -> AsyncGenerator[str, None]:
-            """Retrieves complete content of multiple files at once based on known file path lists"""
-            project_root = self.get_config_value('project_root')
-            async for chunk in self.file_reader_service.get_files_content_stream(file_paths, Path(project_root)):
-                yield self._normalize_stream_chunk(chunk)
+        # get_files_content 工具已移除
 
         @self.streaming_tool(description="🏗️ **Project Structure with Line Count** - Retrieves a hierarchical structure of the project with file line counts.\n" +
                          "✨ Provides complete project organization with detailed file information including line counts.\n" +

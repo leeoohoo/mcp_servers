@@ -176,13 +176,26 @@ class FileReaderService:
         return False
 
     def _resolve_file_path(self, file_path: str, root: Optional[Path] = None) -> Path:
-        """解析文件路径，支持相对路径和绝对路径"""
+        """解析文件路径，支持相对路径和绝对路径，并进行安全检查"""
+        # 获取项目根目录
+        project_root = root if root is not None else self.get_project_root()
+        project_root = project_root.resolve()
+        
+        # 处理路径
         path = Path(file_path)
         if path.is_absolute():
-            return path
+            resolved_path = path
         else:
-            project_root = root if root is not None else self.get_project_root()
-            return project_root / path
+            resolved_path = project_root / path
+        
+        # 规范化路径
+        resolved_path = resolved_path.resolve()
+        
+        # 安全检查：确保文件路径在项目根目录下
+        if not str(resolved_path).startswith(str(project_root)):
+            raise PermissionError(f"安全限制：只允许访问项目根目录 {project_root} 下的文件")
+            
+        return resolved_path
 
     def _compress_content(self, content: str, show_line_numbers: bool = True) -> str:
         """压缩内容，去掉空行并显示行号"""
@@ -478,92 +491,7 @@ class FileReaderService:
             logger.error(f"搜索文件内容时发生异常: {e}")
             yield json.dumps({"error": f"搜索失败 - {str(e)}"}, ensure_ascii=False)
 
-    async def get_files_content_stream(self, file_paths: List[str], root: Optional[Path] = None) -> AsyncGenerator[str, None]:
-        """流式批量读取文件内容"""
-        try:
-            if not file_paths:
-                yield json.dumps({"error": "缺少文件路径列表"}, ensure_ascii=False)
-                return
-
-            # 发送开始信号
-            yield json.dumps({
-                "type": "batch_start",
-                "total_files": len(file_paths)
-            }, ensure_ascii=False)
-
-            for i, file_path in enumerate(file_paths):
-                # 发送当前处理的文件信息
-                yield json.dumps({
-                    "type": "file_start",
-                    "index": i + 1,
-                    "file_path": file_path
-                }, ensure_ascii=False)
-
-                resolved_path = self._resolve_file_path(file_path, root)
-
-                if not resolved_path.exists():
-                    yield json.dumps({
-                        "type": "file_error",
-                        "file_path": file_path,
-                        "error": "文件不存在"
-                    }, ensure_ascii=False)
-                    continue
-
-                if not resolved_path.is_file():
-                    yield json.dumps({
-                        "type": "file_error",
-                        "file_path": file_path,
-                        "error": "路径不是文件"
-                    }, ensure_ascii=False)
-                    continue
-
-                try:
-                    with open(resolved_path, 'r', encoding='utf-8') as f:
-                        content = f.read()
-
-                    compressed_content = self._compress_content(content)
-                    total_lines = len(content.split('\n'))
-                    markdown_language = self._get_markdown_language(file_path)
-
-                    # 发送文件信息
-                    yield json.dumps({
-                        "type": "file_content",
-                        "file_path": file_path,
-                        "total_lines": total_lines,
-                        "language": markdown_language
-                    }, ensure_ascii=False)
-                    
-                    # 输出文件标题和markdown代码块
-                    yield f"\n## 📄 {file_path}\n\n"
-                    yield f"```{markdown_language}\n"
-                    yield compressed_content
-                    yield "\n```\n"
-
-                except UnicodeDecodeError:
-                    yield json.dumps({
-                        "type": "file_error",
-                        "file_path": file_path,
-                        "error": "文件编码不支持"
-                    }, ensure_ascii=False)
-                except Exception as e:
-                    yield json.dumps({
-                        "type": "file_error",
-                        "file_path": file_path,
-                        "error": f"读取失败: {str(e)}"
-                    }, ensure_ascii=False)
-
-                # 每个文件处理完后暂停
-                await asyncio.sleep(0.01)
-
-            # 发送完成信号
-            yield json.dumps({
-                "type": "batch_complete",
-                "message": f"批量读取完成，共处理 {len(file_paths)} 个文件"
-            }, ensure_ascii=False)
-
-        except Exception as e:
-            logger.error(f"批量读取文件时发生异常: {e}")
-            yield json.dumps({"error": f"批量读取失败 - {str(e)}"}, ensure_ascii=False)
+    # get_files_content_stream 方法已移除
 
     async def get_project_structure_stream(self, max_depth: int = 10, include_hidden: bool = False, root: Optional[Path] = None) -> AsyncGenerator[
         str, None]:

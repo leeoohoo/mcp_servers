@@ -160,11 +160,18 @@ class TaskManagerService:
     
     async def create_tasks_stream(self, tasks_data: List[Dict[str, Any]], 
                                 session_id: str) -> AsyncGenerator[str, None]:
-        """创建任务（流式输出）"""
-        yield f"开始创建 {len(tasks_data)} 个任务...\n"
+        """创建或修改任务（流式输出）
+        
+        如果session_id对应的文件已存在，则直接覆盖该文件中的任务
+        """
+        yield f"开始处理 {len(tasks_data)} 个任务...\n"
         
         created_tasks = []
         errors = []
+        
+        # 加载现有任务（仅用于日志记录）
+        file_path = self._get_data_file_path(session_id)
+        existing_tasks = {}
         
         for i, task_data in enumerate(tasks_data):
             try:
@@ -182,8 +189,10 @@ class TaskManagerService:
                     })
                     continue
                 
-                # 创建任务
-                task_id = str(uuid.uuid4())
+                # 直接创建新任务，不考虑修改现有任务
+                # 如果提供了task_id，则使用提供的ID，否则生成新ID
+                task_id = task_data.get('task_id', str(uuid.uuid4()))
+                # 创建新任务
                 task = Task(
                     id=task_id,
                     task_title=task_data['task_title'],
@@ -197,20 +206,21 @@ class TaskManagerService:
                 )
                 
                 created_tasks.append(task)
-                
                 yield f"[{i+1}/{len(tasks_data)}] 创建任务: {task.task_title} (ID: {task_id})\n"
                 
             except Exception as e:
-                error_msg = f"[{i+1}/{len(tasks_data)}] 创建任务失败: {str(e)}\n"
+                error_msg = f"[{i+1}/{len(tasks_data)}] 处理任务失败: {str(e)}\n"
                 yield error_msg
                 errors.append({
                     'index': i,
                     'error': str(e)
                 })
         
-        # 保存到文件
-        if created_tasks:
-            self._save_tasks_to_file(session_id, created_tasks)
+        # 直接保存到文件，覆盖原有内容
+        tasks_to_save = created_tasks
+        
+        if tasks_to_save:
+            self._save_tasks_to_file(session_id, tasks_to_save)
             yield f"\n✅ 成功创建 {len(created_tasks)} 个任务并保存到文件: {session_id}.json\n"
         
         if errors:
