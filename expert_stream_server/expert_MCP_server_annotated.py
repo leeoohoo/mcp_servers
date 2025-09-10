@@ -136,12 +136,12 @@ class ExpertMCPServerAnnotated(EnhancedMCPServer):
         
         @self.decorators.server_param("model_name")
         async def model_name_param(
-            param: Annotated[str, SelectParam(
+            param: Annotated[str, StringParam(
                 display_name="模型名称",
-                description="选择要使用的AI模型",
-                options=["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo-preview", "gpt-4o", "kimi-k2-turbo-preview"],
+                description="输入要使用的AI模型名称",
                 default_value="kimi-k2-turbo-preview",
-                required=False
+                required=False,
+                placeholder="例如: gpt-3.5-turbo, gpt-4, kimi-k2-turbo-preview"
             )]
         ):
             """模型名称参数"""
