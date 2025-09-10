@@ -37,7 +37,9 @@ class ExpertService:
             enable_history=config_values.get("enable_history", True),
             role=config_values.get("role", ""),
             summary_interval=config_values.get("summary_interval", 5),
-            max_rounds=config_values.get("max_rounds", 25)
+            max_rounds=config_values.get("max_rounds", 25),
+            summary_instruction=config_values.get("summary_instruction", ""),
+            summary_request=config_values.get("summary_request", "")
         )
         
         # 初始化服务
@@ -49,7 +51,8 @@ class ExpertService:
                  model_name: str = "gpt-3.5-turbo", system_prompt: str = "",
                  mcp_servers: List[Dict[str, str]] = None, mongodb_url: str = "",
                  history_limit: int = 10, enable_history: bool = True, role: str = "",
-                 summary_interval: int = 5, max_rounds: int = 25):
+                 summary_interval: int = 5, max_rounds: int = 25,
+                 summary_instruction: str = "", summary_request: str = ""):
         self.api_key = api_key
         self.base_url = base_url
         self.model_name = model_name
@@ -64,6 +67,8 @@ class ExpertService:
         # 工具调用总结配置
         self.summary_interval = summary_interval
         self.max_rounds = max_rounds
+        self.summary_instruction = summary_instruction
+        self.summary_request = summary_request
 
         # 生成固定的会话ID，整个服务生命周期内使用同一个
         self.conversation_id = f"expert_conv_{uuid.uuid4().hex[:16]}"
@@ -250,7 +255,9 @@ class ExpertService:
                 messages, conversation_id, tools, model_config,
                 None, self.mcp_tool_execute,
                 summary_interval=self.summary_interval,
-                max_rounds=self.max_rounds
+                max_rounds=self.max_rounds,
+                summary_instruction=self.summary_instruction,
+                summary_request=self.summary_request
             )
 
             # 开始处理
@@ -365,7 +372,9 @@ class ExpertService:
                 messages, conversation_id, tools, model_config,
                 stream_callback, self.mcp_tool_execute,
                 summary_interval=self.summary_interval,
-                max_rounds=self.max_rounds
+                max_rounds=self.max_rounds,
+                summary_instruction=self.summary_instruction,
+                summary_request=self.summary_request
             )
 
             # AI客户端现在由框架管理

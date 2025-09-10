@@ -18,7 +18,7 @@ class AiClient:
     def __init__(self, messages: List[Dict[str, Any]], conversation_id: str,
                  tools: List[Dict[str, Any]], model_config: Dict[str, Any],
                  callback, mcp_tool_execute: McpToolExecute, summary_interval: int = 5,
-                 max_rounds: int = 25):
+                 max_rounds: int = 25, summary_instruction: str = "", summary_request: str = ""):
         self.messages = messages
         self.conversation_id = conversation_id
         self.tools = tools
@@ -29,9 +29,16 @@ class AiClient:
         self.current_ai_request_handler = None
         self.summary_interval = summary_interval
         self.max_rounds = max_rounds
+        self.summary_instruction = summary_instruction
+        self.summary_request = summary_request
+        
+        # 将总结指令和请求内容添加到model_config中
+        model_config_with_summary = model_config.copy()
+        model_config_with_summary["summary_instruction"] = summary_instruction
+        model_config_with_summary["summary_request"] = summary_request
         
         # 初始化AI总结器
-        self.ai_summarizer = AiSummarizer(model_config)
+        self.ai_summarizer = AiSummarizer(model_config_with_summary)
 
     # 非流式方法已移除，只保留流式版本
 
@@ -82,9 +89,9 @@ class AiClient:
             async for chunk in self._execute_pending_tool_calls_stream():
                 yield chunk
                 
-            # 检查是否达到配置的工具调用次数（使用current_round判断，因为每轮递归current_round会+1）
-            if (current_round + 1) % self.summary_interval == 0:  # 达到配置的轮数
-                logger.info(f"🔄 已达到{self.summary_interval}次工具调用，开始生成总结")
+            # 检查是否达到配置的工具调用次数（使用current_round+1判断，因为current_round从0开始计数）
+            if current_round + 1 >= self.summary_interval:  # 达到配置的轮数
+                logger.info(f"🔄 已达到{self.summary_interval}轮对话，开始生成总结")
                 
                 # 使用AI总结器生成总结
                 summarized_messages = None
@@ -98,14 +105,16 @@ class AiClient:
                 
                 # 如果成功获取到总结后的消息
                 if summarized_messages:
-                    # 使用总结后的消息重新开始对话
-                    async for chunk in self.handle_tool_call_recursively_stream(max_rounds, current_round + 1, summarized_messages):
+                    # 使用总结后的消息重新开始对话，并将current_round重置为0
+                    async for chunk in self.handle_tool_call_recursively_stream(max_rounds, 0, summarized_messages):
                         yield chunk
                     return
             
             # 工具执行完成后，进入下一轮递归
-            async for chunk in self.handle_tool_call_recursively_stream(max_rounds, current_round + 1):
-                yield chunk
+            # 注意：这里不再递增current_round，因为在AI响应后的工具调用中已经递增了
+            else:
+                async for chunk in self.handle_tool_call_recursively_stream(max_rounds, current_round+1):
+                    yield chunk
 
         else:
             # 没有工具调用，进行AI聊天

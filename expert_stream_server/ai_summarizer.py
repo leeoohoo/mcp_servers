@@ -21,6 +21,10 @@ class AiSummarizer:
             model_config: AI模型配置
         """
         self.model_config = model_config
+        # 从model_config中获取总结指令和请求内容，如果没有则使用默认值
+        self.summary_instruction = model_config.get("summary_instruction", "")
+        self.summary_request = model_config.get("summary_request", "")
+
 
     async def summarize_progress_stream(self, messages: List[Dict[str, Any]], conversation_id: str) -> AsyncGenerator[
         Any, None]:
@@ -36,79 +40,30 @@ class AiSummarizer:
         logger.info(f"🔍 开始总结当前进度，消息数量: {len(messages)}")
 
         # 提取系统消息
-        system_message = None
-        for msg in messages:
-            if msg.get('role') == 'system':
-                system_message = msg
-                break
-
+       
         # 构建用于总结的消息列表
         summary_request_messages = []
 
-        # 添加系统消息
-        if system_message:
-            summary_request_messages.append(system_message)
 
-        # 添加总结指令
+        # 添加总结指令（系统消息应该在用户消息之前）
         summary_instruction = {
             "role": "system",
-            "content": """You are a professional conversation analysis specialist. Please generate a structured summary report based on the following conversation history and tool call results.
-
-            ## Summary Requirements:
-            1. **Original User Intent Identification**: Accurately extract the user's core problems and ultimate objectives
-            2. **Key Information Filtering**: Filter important information directly related to the original intent from conversations and tool call results
-            3. **Deduplication Processing**: Avoid redundant content and merge similar information
-            4. **Priority Ranking**: Sort information by importance and relevance
-    
-            ## Output Format:
-            ### 🎯 Core User Requirements
-            - [Concisely describe the user's main problems and objectives]
-    
-            ### 📋 Key Information Acquired
-            - [List core findings related to requirements by importance]
-            - [Include important data fragments obtained from tool calls]
-    
-            ### ✅ Completed Key Operations
-            - [List important tool calls executed and their core results]
-    
-            ### 🔍 Information Gap Analysis
-            - [Identify information still needed to be acquired]
-            - [Avoid redundant queries for existing information]
-    
-            ### 📝 Next Action Recommendations
-            - [Based on current information status, suggest specific next steps]
-    
-            ## Important Notes:
-            - Focus on relevance to the user's original requirements
-            - Filter out irrelevant conversation content
-            - Highlight key data obtained from tool calls
-            - Provide clear guidance for subsequent operations to avoid duplicate queries"""
+            "content": self.summary_instruction
         }
         summary_request_messages.append(summary_instruction)
-
-        # 添加所有消息用于总结
+        
+        # 将非系统消息转换为整体文本，并添加到summary_request后面
+        messages_text = ""
         for msg in messages:
-            if msg.get('role') != 'system':  # 跳过系统消息，因为已经添加过
-                summary_request_messages.append(msg)
-
-        # 添加总结请求
+            if msg.get('role') != 'system':  # 跳过系统消息
+                role = msg.get('role', '')
+                content = msg.get('content', '')
+                messages_text += f"\n\n{role.upper()}: {content}"
+        
+        # 添加总结请求（用户消息）- 将原始消息文本添加到summary_request后面
         summary_request_messages.append({
             "role": "user",
-            "content": """Please generate a precise summary report based on the above conversation history.
-        
-                ## Analysis Focus:
-                1. Identify the user's real needs and ultimate goals from the beginning of the conversation
-                2. Extract core information related to requirements from all tool call results
-                3. Identify what information has been acquired and what still needs to be supplemented
-                4. To avoid duplicate queries, clearly mark verified key data points
-                
-                ## Output Requirements:
-                - Use structured format for easy understanding and use by subsequent AI
-                - Highlight information fragments most relevant to original requirements
-                - Provide clear next-step operation guidance
-                - Mark the source of important information (conversation vs tool calls)
-                
-                Please generate the summary report."""
+            "content": self.summary_request + "\n\nThe following is the dialogue content that needs to be analyzed.：[" + messages_text+"]"
         })
 
         try:

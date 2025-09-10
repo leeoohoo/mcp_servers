@@ -273,6 +273,32 @@ class ExpertMCPServerAnnotated(EnhancedMCPServer):
         ):
             """最大工具调用轮数参数"""
             pass
+            
+        @self.decorators.server_param("summary_instruction")
+        async def summary_instruction_param(
+            param: Annotated[str, StringParam(
+                display_name="总结指令内容",
+                description="AI总结器使用的系统指令内容",
+                required=False,
+                default_value="You are a professional conversation analysis and requirement prediction expert. Please intelligently analyze and preserve data segments from tool call results that are crucial for subsequent operations based on the user's original requirements.",
+                placeholder="输入总结指令内容..."
+            )]
+        ):
+            """总结指令内容参数"""
+            pass
+            
+        @self.decorators.server_param("summary_request")
+        async def summary_request_param(
+            param: Annotated[str, StringParam(
+                display_name="总结请求内容",
+                description="AI总结器使用的用户请求内容",
+                required=False,
+                default_value="Please intelligently analyze and generate a precise data retention report based on the user's original requirements.",
+                placeholder="输入总结请求内容..."
+            )]
+        ):
+            """总结请求内容参数"""
+            pass
 
         
         return True
@@ -295,7 +321,9 @@ class ExpertMCPServerAnnotated(EnhancedMCPServer):
                 "tool_description": "🤖 **Development Assistant** - Professional Development Task Executor",
                 "parameter_description": "🎯 **Task Request Parameter**: Send task request to development assistant",
                 "summary_interval": 5,
-                "max_rounds": 25
+                "max_rounds": 25,
+                "summary_instruction": "You are a professional conversation analysis and requirement prediction expert. Please intelligently analyze and preserve data segments from tool call results that are crucial for subsequent operations based on the user's original requirements.",
+                "summary_request": "Please intelligently analyze and generate a precise data retention report based on the user's original requirements."
             }
         )
 

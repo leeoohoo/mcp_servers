@@ -89,7 +89,8 @@ class TaskManagerService:
         tasks = {}
         if file_path.exists():
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                # 使用errors='replace'参数处理可能的编码错误
+                with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
                     data = json.load(f)
                     for task_data in data.get('tasks', []):
                         # 为旧数据提供 viewed_count 默认值
@@ -112,7 +113,8 @@ class TaskManagerService:
                 'updated_at': datetime.now().isoformat()
             }
             with open(file_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
+                # 设置ensure_ascii=True以避免UTF-8编码问题
+                json.dump(data, f, ensure_ascii=True, indent=2)
             logger.info(f"已保存 {len(tasks)} 个任务到 {file_path}")
         except Exception as e:
             logger.error(f"保存任务数据失败: {e}")
@@ -123,7 +125,8 @@ class TaskManagerService:
             file_path = self._get_execution_file_path(task_execution.task_id)
             data = asdict(task_execution)
             with open(file_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
+                # 设置ensure_ascii=True以避免UTF-8编码问题
+                json.dump(data, f, ensure_ascii=True, indent=2)
             logger.info(f"已保存任务执行过程到 {file_path}")
         except Exception as e:
             logger.error(f"保存任务执行过程失败: {e}")
@@ -133,7 +136,8 @@ class TaskManagerService:
         file_path = self._get_execution_file_path(task_id)
         if file_path.exists():
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                # 使用errors='replace'参数处理可能的编码错误
+                with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
                     data = json.load(f)
                     return TaskExecution(**data)
             except Exception as e:
