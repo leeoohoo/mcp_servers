@@ -18,7 +18,8 @@ class AiClient:
     def __init__(self, messages: List[Dict[str, Any]], conversation_id: str,
                  tools: List[Dict[str, Any]], model_config: Dict[str, Any],
                  callback, mcp_tool_execute: McpToolExecute, summary_interval: int = 5,
-                 max_rounds: int = 25, summary_instruction: str = "", summary_request: str = ""):
+                 max_rounds: int = 25, summary_instruction: str = "", summary_request: str = "",
+                 summary_length_threshold: int = 30000):
         self.messages = messages
         self.conversation_id = conversation_id
         self.tools = tools
@@ -31,6 +32,7 @@ class AiClient:
         self.max_rounds = max_rounds
         self.summary_instruction = summary_instruction
         self.summary_request = summary_request
+        self.summary_length_threshold = summary_length_threshold
         
         # 将总结指令和请求内容添加到model_config中
         model_config_with_summary = model_config.copy()
@@ -39,6 +41,30 @@ class AiClient:
         
         # 初始化AI总结器
         self.ai_summarizer = AiSummarizer(model_config_with_summary)
+
+    def _calculate_messages_total_length(self) -> int:
+        """计算消息历史的总字符长度"""
+        total_length = 0
+        for message in self.messages:
+            # 计算消息内容长度
+            content = message.get('content', '')
+            if isinstance(content, str):
+                total_length += len(content)
+            elif isinstance(content, list):
+                # 处理多模态内容
+                for item in content:
+                    if isinstance(item, dict) and 'text' in item:
+                        total_length += len(item['text'])
+            
+            # 计算工具调用参数长度
+            tool_calls = message.get('tool_calls', [])
+            for tool_call in tool_calls:
+                if isinstance(tool_call, dict):
+                    args = tool_call.get('function', {}).get('arguments', '') or tool_call.get('arguments', '')
+                    if isinstance(args, str):
+                        total_length += len(args)
+        
+        return total_length
 
     # 非流式方法已移除，只保留流式版本
 
@@ -89,9 +115,14 @@ class AiClient:
             async for chunk in self._execute_pending_tool_calls_stream():
                 yield chunk
                 
-            # 检查是否达到配置的工具调用次数（使用current_round+1判断，因为current_round从0开始计数）
-            if current_round + 1 >= self.summary_interval:  # 达到配置的轮数
-                logger.info(f"🔄 已达到{self.summary_interval}轮对话，开始生成总结")
+            # 检查是否达到配置的工具调用次数和消息总长度阈值，且当轮有工具调用
+            messages_total_length = self._calculate_messages_total_length()
+            should_summarize = (current_round + 1 >= self.summary_interval and 
+                              messages_total_length >= self.summary_length_threshold and
+                              has_pending_tools)
+            
+            if should_summarize:
+                logger.info(f"🔄 已达到{self.summary_interval}轮对话且消息总长度({messages_total_length})超过阈值({self.summary_length_threshold})且当轮有工具调用，开始生成总结")
                 
                 # 使用AI总结器生成总结
                 summarized_messages = None

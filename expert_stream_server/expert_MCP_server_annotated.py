@@ -299,6 +299,19 @@ class ExpertMCPServerAnnotated(EnhancedMCPServer):
         ):
             """总结请求内容参数"""
             pass
+            
+        @self.decorators.server_param("summary_length_threshold")
+        async def summary_length_threshold_param(
+            param: Annotated[int, ServerParam(
+                display_name="总结长度阈值",
+                description="触发总结的消息总长度阈值（字符数）",
+                param_type="integer",
+                default_value=30000,
+                required=False
+            )]
+        ):
+            """总结长度阈值参数"""
+            pass
 
         
         return True
@@ -323,7 +336,8 @@ class ExpertMCPServerAnnotated(EnhancedMCPServer):
                 "summary_interval": 5,
                 "max_rounds": 25,
                 "summary_instruction": "You are a professional conversation analysis and requirement prediction expert. Please intelligently analyze and preserve data segments from tool call results that are crucial for subsequent operations based on the user's original requirements.",
-                "summary_request": "Please intelligently analyze and generate a precise data retention report based on the user's original requirements."
+                "summary_request": "Please intelligently analyze and generate a precise data retention report based on the user's original requirements.",
+                "summary_length_threshold": 30000
             }
         )
 
