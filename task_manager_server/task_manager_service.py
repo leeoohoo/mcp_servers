@@ -89,16 +89,57 @@ class TaskManagerService:
         tasks = {}
         if file_path.exists():
             try:
-                # 使用errors='replace'参数处理可能的编码错误
+                # 首先尝试读取文件内容，处理可能的编码错误
                 with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
-                    data = json.load(f)
-                    for task_data in data.get('tasks', []):
+                    content = f.read()
+                
+                # 如果文件为空，返回空字典
+                if not content.strip():
+                    logger.warning(f"文件为空: {file_path}")
+                    return tasks
+                
+                # 尝试解析JSON
+                try:
+                    data = json.loads(content)
+                except json.JSONDecodeError as json_err:
+                    logger.error(f"JSON解析失败 {file_path}: {json_err}")
+                    # 尝试修复常见的JSON问题
+                    try:
+                        # 移除可能的BOM标记
+                        content = content.lstrip('\ufeff')
+                        data = json.loads(content)
+                        logger.info(f"修复BOM后成功解析JSON: {file_path}")
+                    except json.JSONDecodeError:
+                        logger.error(f"无法修复JSON文件: {file_path}，跳过加载")
+                        return tasks
+                
+                # 处理任务数据
+                for task_data in data.get('tasks', []):
+                    try:
                         # 为旧数据提供 viewed_count 默认值
                         if 'viewed_count' not in task_data:
                             task_data['viewed_count'] = 0
                         task = Task(**task_data)
                         tasks[task.id] = task
+                    except Exception as task_err:
+                        logger.error(f"创建任务对象失败: {task_err}, 任务数据: {task_data}")
+                        continue
 
+            except UnicodeDecodeError as decode_err:
+                logger.error(f"UTF-8解码失败 {file_path}: {decode_err}")
+                # 尝试使用其他编码
+                try:
+                    with open(file_path, 'r', encoding='gbk', errors='replace') as f:
+                        content = f.read()
+                    data = json.loads(content)
+                    logger.info(f"使用GBK编码成功读取文件: {file_path}")
+                    for task_data in data.get('tasks', []):
+                        if 'viewed_count' not in task_data:
+                            task_data['viewed_count'] = 0
+                        task = Task(**task_data)
+                        tasks[task.id] = task
+                except Exception as fallback_err:
+                    logger.error(f"使用备用编码仍然失败 {file_path}: {fallback_err}")
             except Exception as e:
                 logger.error(f"加载任务数据失败 {file_path}: {e}")
         return tasks
@@ -112,36 +153,101 @@ class TaskManagerService:
                 'tasks': [asdict(task) for task in tasks],
                 'updated_at': datetime.now().isoformat()
             }
+            # 确保目录存在
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            
             with open(file_path, 'w', encoding='utf-8') as f:
-                # 设置ensure_ascii=True以避免UTF-8编码问题
-                json.dump(data, f, ensure_ascii=True, indent=2)
+                # 移除ensure_ascii=True以支持中文字符，添加separators减少文件大小
+                json.dump(data, f, ensure_ascii=False, indent=2, separators=(',', ': '))
             logger.info(f"已保存 {len(tasks)} 个任务到 {file_path}")
+        except UnicodeEncodeError as encode_err:
+            logger.error(f"UTF-8编码失败: {encode_err}")
+            # 回退到ASCII编码
+            try:
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, ensure_ascii=True, indent=2)
+                logger.warning(f"使用ASCII编码保存任务数据到 {file_path}")
+            except Exception as fallback_err:
+                logger.error(f"ASCII编码保存也失败: {fallback_err}")
         except Exception as e:
             logger.error(f"保存任务数据失败: {e}")
+            # 记录更详细的错误信息
+            logger.error(f"文件路径: {file_path}")
+            logger.error(f"任务数量: {len(tasks)}")
+            logger.error(f"会话ID: {session_id}")
     
     def _save_task_execution(self, task_execution: TaskExecution):
         """保存任务执行过程到文件"""
         try:
             file_path = self._get_execution_file_path(task_execution.task_id)
             data = asdict(task_execution)
+            # 确保目录存在
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            
             with open(file_path, 'w', encoding='utf-8') as f:
-                # 设置ensure_ascii=True以避免UTF-8编码问题
-                json.dump(data, f, ensure_ascii=True, indent=2)
+                # 移除ensure_ascii=True以支持中文字符
+                json.dump(data, f, ensure_ascii=False, indent=2, separators=(',', ': '))
             logger.info(f"已保存任务执行过程到 {file_path}")
+        except UnicodeEncodeError as encode_err:
+            logger.error(f"UTF-8编码失败: {encode_err}")
+            # 回退到ASCII编码
+            try:
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, ensure_ascii=True, indent=2)
+                logger.warning(f"使用ASCII编码保存任务执行过程到 {file_path}")
+            except Exception as fallback_err:
+                logger.error(f"ASCII编码保存也失败: {fallback_err}")
         except Exception as e:
             logger.error(f"保存任务执行过程失败: {e}")
+            # 记录更详细的错误信息
+            logger.error(f"文件路径: {file_path}")
+            logger.error(f"任务ID: {task_execution.task_id}")
+            logger.error(f"执行过程长度: {len(task_execution.execution_process)}")
     
     def _load_task_execution(self, task_id: str) -> Optional[TaskExecution]:
         """从文件加载任务执行过程"""
         file_path = self._get_execution_file_path(task_id)
         if file_path.exists():
             try:
-                # 使用errors='replace'参数处理可能的编码错误
+                # 首先尝试读取文件内容，处理可能的编码错误
                 with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
-                    data = json.load(f)
+                    content = f.read()
+                
+                # 如果文件为空，返回None
+                if not content.strip():
+                    logger.warning(f"执行过程文件为空: {file_path}")
+                    return None
+                
+                # 尝试解析JSON
+                try:
+                    data = json.loads(content)
+                except json.JSONDecodeError as json_err:
+                    logger.error(f"执行过程JSON解析失败 {file_path}: {json_err}")
+                    # 尝试修复BOM问题
+                    try:
+                        content = content.lstrip('\ufeff')
+                        data = json.loads(content)
+                        logger.info(f"修复BOM后成功解析执行过程JSON: {file_path}")
+                    except json.JSONDecodeError:
+                        logger.error(f"无法修复执行过程JSON文件: {file_path}")
+                        return None
+                
+                return TaskExecution(**data)
+                
+            except UnicodeDecodeError as decode_err:
+                logger.error(f"执行过程文件UTF-8解码失败 {file_path}: {decode_err}")
+                # 尝试使用其他编码
+                try:
+                    with open(file_path, 'r', encoding='gbk', errors='replace') as f:
+                        content = f.read()
+                    data = json.loads(content)
+                    logger.info(f"使用GBK编码成功读取执行过程文件: {file_path}")
                     return TaskExecution(**data)
+                except Exception as fallback_err:
+                    logger.error(f"使用备用编码读取执行过程仍然失败 {file_path}: {fallback_err}")
             except Exception as e:
                 logger.error(f"加载任务执行过程失败 {file_path}: {e}")
+                logger.error(f"任务ID: {task_id}")
         return None
     
     def _get_task_by_id(self, task_id: str) -> Optional[Task]:
