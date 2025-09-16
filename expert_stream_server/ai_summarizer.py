@@ -124,15 +124,19 @@ class AiSummarizer:
             if system_message:
                 new_messages.append(system_message)
 
-            # 添加原始用户问题（第一个用户消息）
+            # 添加原始用户问题（第一个用户消息）- 确保第一条用户消息始终保存
             first_user_message = None
             for msg in messages:
                 if msg.get('role') == 'user':
                     first_user_message = msg
                     break
 
+            # 确保第一条用户消息一直保存下来
             if first_user_message:
                 new_messages.append(first_user_message)
+                logger.info(f"📌 保存第一条用户消息: {first_user_message.get('content', '')[:50]}...")
+            else:
+                logger.warning("⚠️ 未找到第一条用户消息")
 
             # 添加总结消息
             summary_message = {

@@ -308,31 +308,28 @@ class FileReaderService:
         try:
             # 参数验证
             if not file_path:
-                yield json.dumps({"error": "缺少必要参数 file_path"}, ensure_ascii=False)
+                yield "错误: 缺少必要参数 file_path\n"
                 return
 
             if start_line < 1:
-                yield json.dumps({"error": "start_line 必须是大于0的整数（1-based行号）"}, ensure_ascii=False)
+                yield "错误: start_line 必须是大于0的整数（1-based行号）\n"
                 return
 
             if end_line < start_line:
-                yield json.dumps({"error": "end_line 必须是大于等于 start_line 的整数"}, ensure_ascii=False)
+                yield "错误: end_line 必须是大于等于 start_line 的整数\n"
                 return
 
             # 解析文件路径
             resolved_path = self._resolve_file_path(file_path, root)
 
             if not resolved_path.exists():
-                yield json.dumps({"error": f"文件不存在 {resolved_path}"}, ensure_ascii=False)
+                yield f"错误: 文件不存在 {resolved_path}\n"
                 return
 
             if not resolved_path.is_file():
-                yield json.dumps({"error": f"路径不是文件 {resolved_path}"}, ensure_ascii=False)
+                yield f"错误: 路径不是文件 {resolved_path}\n"
                 return
 
-            # 获取文件的markdown语言类型
-            markdown_language = self._get_markdown_language(file_path)
-            
             # 读取文件内容
             with open(resolved_path, 'r', encoding='utf-8') as f:
                 all_lines = f.readlines()
@@ -344,28 +341,8 @@ class FileReaderService:
             actual_end = min(total_lines, end_line)
 
             if actual_start > total_lines:
-                yield json.dumps({
-                    "error": f"起始行号 {start_line} 超出文件总行数 {total_lines}"
-                }, ensure_ascii=False)
+                yield f"错误: 起始行号 {start_line} 超出文件总行数 {total_lines}\n"
                 return
-
-            # 先发送文件信息
-            yield json.dumps({
-                "type": "file_info",
-                "file_path": str(resolved_path),
-                "request_range": f"{start_line}-{end_line}",
-                "language": markdown_language
-            }, ensure_ascii=False)
-            
-            # 发送总行数信息
-            yield json.dumps({
-                "type": "meta",
-                "total_lines": total_lines,
-                "actual_range": f"{actual_start}-{actual_end}"
-            }, ensure_ascii=False)
-            
-            # 发送markdown代码块开始标记
-            yield f"```{markdown_language}\n"
 
             # 流式输出内容
             for i in range(actual_start - 1, actual_end):
@@ -378,20 +355,11 @@ class FileReaderService:
                 if (i + 1) % 10 == 0:
                     await asyncio.sleep(0.01)
 
-            # 发送markdown代码块结束标记
-            yield "```\n"
-            
-            # 发送完成信号
-            yield json.dumps({
-                "type": "complete",
-                "message": f"成功读取文件 {file_path} 第 {actual_start}-{actual_end} 行"
-            }, ensure_ascii=False)
-
         except UnicodeDecodeError:
-            yield json.dumps({"error": f"文件编码不支持，无法读取 {file_path}"}, ensure_ascii=False)
+            yield f"错误: 文件编码不支持，无法读取 {file_path}\n"
         except Exception as e:
             logger.error(f"读取文件时发生异常: {e}")
-            yield json.dumps({"error": f"读取文件失败 - {str(e)}"}, ensure_ascii=False)
+            yield f"错误: 读取文件失败 - {str(e)}\n"
 
     async def search_files_by_content_stream(self, query_text: str, limit: int = 50,
                                              case_sensitive: bool = False, context_lines: int = 20,
@@ -399,31 +367,15 @@ class FileReaderService:
         """使用Whoosh进行流式搜索文件内容，只返回文件地址和匹配行详情"""
         try:
             if not query_text:
-                yield json.dumps({"error": "缺少搜索关键词"}, ensure_ascii=False)
+                yield "错误: 缺少搜索关键词\n"
                 return
-
-            # 发送搜索开始信号
-            yield json.dumps({
-                "type": "search_start",
-                "query": query_text,
-                "limit": limit,
-                "case_sensitive": case_sensitive,
-                "message": "开始搜索..."
-            }, ensure_ascii=False)
 
             # 检查索引是否存在，如果不存在则创建
             if not exists_in(str(self.index_dir)):
-                yield json.dumps({
-                    "type": "index_creating",
-                    "message": "索引不存在，正在创建索引..."
-                }, ensure_ascii=False)
+                yield "索引不存在，正在创建索引...\n"
                 self._create_or_update_index()
                 await asyncio.sleep(0.01)  # 让出控制权
-                
-                yield json.dumps({
-                    "type": "index_complete",
-                    "message": "索引创建完成，开始搜索..."
-                }, ensure_ascii=False)
+                yield "索引创建完成，开始搜索...\n"
 
             # 使用Whoosh进行搜索
             ix = open_dir(str(self.index_dir))
@@ -447,49 +399,27 @@ class FileReaderService:
                     except ValueError:
                         relative_path = file_path
 
-                    # 获取文件的markdown语言类型
-                    markdown_language = self._get_markdown_language(file_path)
-                    
-                    # 流式输出匹配结果（包含文件地址、匹配行详情和文件总行数）
-                    yield json.dumps({
-                        "type": "match",
-                        "file_path": relative_path,
-                        "line_matches": line_matches,
-                        "total_matches_in_file": len(line_matches),
-                        "total_lines": total_lines,
-                        "language": markdown_language
-                    }, ensure_ascii=False)
-                    
-                    # 输出markdown格式的搜索结果
-                    yield f"\n### 📄 {relative_path} ({len(line_matches)} 处匹配)\n\n"
+                    # 输出搜索结果
+                    yield f"\n📄 {relative_path} ({len(line_matches)} 处匹配)\n"
                     
                     if line_matches:
-                        yield f"```{markdown_language}\n"
                         for match in line_matches:
                             yield f"{match['line_number']}:{match['content']}\n"
-                        yield "```\n"
 
                     results_count += 1
                     
                     # 每处理一个文件暂停一下
                     await asyncio.sleep(0.01)
 
-            # 发送搜索完成信号
+            # 输出搜索结果统计
             if results_count == 0:
-                yield json.dumps({
-                    "type": "no_results",
-                    "message": f"未找到包含 '{query_text}' 的文件"
-                }, ensure_ascii=False)
+                yield f"未找到包含 '{query_text}' 的文件\n"
             else:
-                yield json.dumps({
-                    "type": "search_complete",
-                    "results_count": results_count,
-                    "message": f"找到 {results_count} 个匹配文件"
-                }, ensure_ascii=False)
+                yield f"\n找到 {results_count} 个匹配文件\n"
 
         except Exception as e:
             logger.error(f"搜索文件内容时发生异常: {e}")
-            yield json.dumps({"error": f"搜索失败 - {str(e)}"}, ensure_ascii=False)
+            yield f"错误: 搜索失败 - {str(e)}\n"
 
     # get_files_content_stream 方法已移除
 
@@ -500,12 +430,8 @@ class FileReaderService:
             # 获取项目根目录
             project_root = root if root is not None else self.get_project_root()
             
-            # 发送开始信号
-            yield json.dumps({
-                "type": "structure_start",
-                "project_root": str(project_root),
-                "max_depth": max_depth
-            }, ensure_ascii=False)
+            # 输出根目录
+            yield f"🏗️ Project Structure: {project_root.name}\n"
 
             async def build_tree_stream(path: Path, prefix: str = "", depth: int = 0):
                 if depth > max_depth:
@@ -531,12 +457,7 @@ class FileReaderService:
                         next_prefix = "    " if is_last else "│   "
 
                         if entry.is_dir():
-                            yield json.dumps({
-                                "type": "directory",
-                                "path": str(entry.relative_to(project_root)),
-                                "display": f"{prefix}{current_prefix}{entry.name}/",
-                                "depth": depth
-                            }, ensure_ascii=False)
+                            yield f"{prefix}{current_prefix}{entry.name}/\n"
 
                             # 递归处理子目录
                             async for child_item in build_tree_stream(entry, prefix + next_prefix, depth + 1):
@@ -554,50 +475,22 @@ class FileReaderService:
                                 except Exception:
                                     line_info = ""
 
-                            yield json.dumps({
-                                "type": "file",
-                                "path": str(entry.relative_to(project_root)),
-                                "display": f"{prefix}{current_prefix}{entry.name}{line_info}",
-                                "depth": depth
-                            }, ensure_ascii=False)
+                            yield f"{prefix}{current_prefix}{entry.name}{line_info}\n"
 
                         # 每10个条目暂停一下
                         if (i + 1) % 10 == 0:
                             await asyncio.sleep(0.01)
 
                 except PermissionError:
-                    yield json.dumps({
-                        "type": "error",
-                        "path": str(path.relative_to(project_root)),
-                        "display": f"{prefix}❌ Permission denied",
-                        "depth": depth
-                    }, ensure_ascii=False)
-
-            # 输出根目录
-            yield json.dumps({
-                "type": "root",
-                "display": f"🏗️ Project Structure: {project_root.name}"
-            }, ensure_ascii=False)
-            
-            # 输出 Markdown 格式的项目结构标题
-            yield f"\n## 📁 {project_root.name}\n\n```\n"
+                    yield f"{prefix}❌ Permission denied\n"
 
             # 流式构建树结构
             async for item in build_tree_stream(project_root):
                 yield item
 
-            # 结束 Markdown 代码块
-            yield "```\n"
-            
-            # 发送完成信号
-            yield json.dumps({
-                "type": "structure_complete",
-                "message": "项目结构生成完成"
-            }, ensure_ascii=False)
-
         except Exception as e:
             logger.info(f"获取项目结构时发生异常: {e}")
-            yield json.dumps({"error": f"获取项目结构失败 - {str(e)}"}, ensure_ascii=False)
+            yield f"错误: 获取项目结构失败 - {str(e)}\n"
 
     def start_monitoring(self) -> Dict[str, Any]:
         """启动文件监控"""

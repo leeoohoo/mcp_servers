@@ -203,11 +203,11 @@ class McpToolExecute:
         # 计算 SSE 接口地址
         sse_url = server_url
         if sse_url.endswith('/mcp'):
-            sse_url = sse_url[:-4] + '/sse/tool/call'
+            sse_url = sse_url[:-4] + '/sse/openai/tool/call'
         elif '/mcp' in sse_url:
-            sse_url = sse_url.replace('/mcp', '/sse/tool/call')
+            sse_url = sse_url.replace('/mcp', '/sse/openai/tool/call')
         else:
-            sse_url = sse_url.rstrip('/') + '/sse/tool/call'
+            sse_url = sse_url.rstrip('/') + '/sse/openai/tool/call'
 
         logger.info(f"🔧 调用SSE接口: {sse_url}")
 
@@ -295,6 +295,18 @@ class McpToolExecute:
                                 content_to_yield = None
 
                                 if isinstance(data_obj, dict):
+                                    if 'choices' in data_obj and len(data_obj['choices']) > 0:
+                                        # OpenAI 格式
+                                        choice = data_obj['choices'][0]
+                                        if 'delta' in choice:
+                                            delta = choice['delta']
+                                            if 'content' in delta and delta['content']:
+                                                content_to_yield = delta['content']
+                                            elif 'function_call' in delta:
+                                                # 处理函数调用
+                                                func_call = delta['function_call']
+                                                if 'arguments' in func_call:
+                                                    content_to_yield = func_call['arguments']
                                     # 优先查找 chunk 字段
                                     if 'chunk' in data_obj:
                                         content_to_yield = str(data_obj['chunk'])

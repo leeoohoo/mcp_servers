@@ -89,7 +89,7 @@ class FileReaderMCPServer(EnhancedMCPServer):
             """Reads specific line ranges from a file and returns content with line numbers"""
             project_root = self.get_config_value('project_root')
             async for chunk in self.file_reader_service.read_file_lines_stream(file_path, start_line, end_line, Path(project_root)):
-                yield self._normalize_stream_chunk(chunk)
+                yield chunk
 
         @self.streaming_tool(description="🧠 **Hybrid Intelligent Search** - Combines smart semantic search with global text search for comprehensive results.\n" +
                          "✨ First attempts intelligent search (Class#method format, code structure understanding), then falls back to global text search if no results found.\n" +
@@ -105,7 +105,7 @@ class FileReaderMCPServer(EnhancedMCPServer):
             async for chunk in self.file_reader_service.search_files_by_content_stream(
                     query, 20, False, 20, None, Path(project_root)
             ):
-                yield self._normalize_stream_chunk(chunk)
+                yield chunk
 
         # get_files_content 工具已移除
 
@@ -120,7 +120,7 @@ class FileReaderMCPServer(EnhancedMCPServer):
             """Retrieves a hierarchical structure of the project with file line counts"""
             project_root = self.get_config_value('project_root')
             async for chunk in self.file_reader_service.get_project_structure_stream(max_depth, include_hidden, Path(project_root)):
-                yield self._normalize_stream_chunk(chunk)
+                yield chunk
 
 
 
