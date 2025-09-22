@@ -1,1 +1,1 @@
-mcp_framework>=0.1.23
+mcp-framework>=0.1.23
