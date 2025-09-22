@@ -2,7 +2,7 @@
 # 任务管理器服务器依赖包
 
 # Core MCP Framework
-mcp_framework>=0.1.2
+mcp_framework>=0.1.23
 
 # Type annotations
 typing-extensions>=4.0.0
