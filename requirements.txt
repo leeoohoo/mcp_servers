@@ -39,6 +39,6 @@ pathlib2>=2.3.0  # For older Python versions compatibility
 watchdog>=3.0.0
 
 
-mcp_framework>=0.1.2
+mcp_framework>=0.1.23
 
 whoosh>=2.7.4
