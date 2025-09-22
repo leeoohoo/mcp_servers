@@ -1,0 +1,382 @@
+name: Build File Write Server
+
+# 触发条件
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'file_write_server/**'
+      - '.github/workflows/build-file-write-server.yml'
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'file_write_server/**'
+  workflow_dispatch:  # 手动触发
+    inputs:
+      platforms:
+        description: 'Select platforms to build'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - linux
+          - windows
+          - macos-intel
+          - macos-m1m2
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # 文件写入服务器构建作业
+  build:
+    name: Build File Write Server on ${{ matrix.platform }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux x86_64
+          - os: ubuntu-latest
+            platform: linux
+            arch: x86_64
+            mcp_platform: native
+            executable_suffix: ""
+            archive_format: tar.gz
+            archive_name: file-write-server-linux-x86_64
+
+          # Windows x86_64
+          - os: windows-latest
+            platform: windows
+            arch: x86_64
+            mcp_platform: native
+            executable_suffix: .exe
+            archive_format: zip
+            archive_name: file-write-server-windows-x86_64
+
+          # macOS Intel x86_64
+          - os: macos-13
+            platform: macos
+            arch: x86_64
+            mcp_platform: native
+            executable_suffix: ""
+            archive_format: tar.gz
+            archive_name: file-write-server-macos-intel-x86_64
+
+          # macOS Apple Silicon ARM64 (M1/M2/M3)
+          - os: macos-latest
+            platform: macos
+            arch: arm64
+            mcp_platform: native
+            executable_suffix: ""
+            archive_format: tar.gz
+            archive_name: file-write-server-macos-apple-silicon-arm64
+
+    steps:
+    # 1. 检出代码
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # 2. 设置 Python 环境
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    # 3. 显示系统信息
+    - name: Display system info
+      env:
+        PYTHONIOENCODING: utf-8
+        PYTHONUTF8: 1
+      run: |
+        echo "🖥️  系统信息:"
+        echo "Runner OS: ${{ runner.os }}"
+        echo "Platform: ${{ matrix.platform }}-${{ matrix.arch }}"
+        echo "MCP Platform: ${{ matrix.mcp_platform }}"
+        python --version
+        pip --version
+        python -c "import platform; print(f'Python 平台: {platform.platform()}'); print(f'机器架构: {platform.machine()}'); print(f'处理器: {platform.processor()}')"
+      shell: bash
+
+    # 4. 安装 MCP Framework
+    - name: Install MCP Framework
+      env:
+        PYTHONIOENCODING: utf-8
+        PYTHONUTF8: 1
+      run: |
+        echo "📦 安装 MCP Framework..."
+        python -m pip install --upgrade pip
+        if [ "${{ runner.os }}" = "Windows" ]; then
+          python -m pip install mcp-framework --no-warn-script-location
+        else
+          pip install mcp-framework
+        fi
+      shell: bash
+
+    # 5. 安装项目依赖
+    - name: Install project dependencies
+      env:
+        PYTHONIOENCODING: utf-8
+        PYTHONUTF8: 1
+      run: |
+        echo "📦 安装项目依赖..."
+        if [ "${{ runner.os }}" = "Windows" ]; then
+          python -m pip install --upgrade pip --no-warn-script-location || echo "pip 升级跳过"
+        else
+          pip install --upgrade pip
+        fi
+        
+        # 安装基础依赖
+        if [ -f requirements.txt ]; then
+          pip install -r requirements.txt
+        fi
+        if [ -f file_write_server/file_write_server_requirements.txt ]; then
+          pip install -r file_write_server/file_write_server_requirements.txt
+        fi
+      shell: bash
+
+    # 6. 验证 MCP Framework 构建工具
+    - name: Verify MCP Framework build tool
+      run: |
+        echo "🔧 验证 MCP Framework 构建工具..."
+        python -m mcp_framework.build --help
+        python -m mcp_framework.build --check-docker || echo "Docker 检查完成"
+      shell: bash
+
+    # 7. 构建文件写入服务器
+    - name: Build File Write Server
+      if: hashFiles('file_write_server/file_write_server.py') != ''
+      env:
+        PYTHONIOENCODING: utf-8
+        PYTHONUTF8: 1
+      run: |
+        echo "🔨 构建文件写入服务器..."
+        echo "平台: ${{ matrix.mcp_platform }}, 架构: ${{ matrix.arch }}"
+        # 创建独立的输出目录
+        mkdir -p "dist/file-write-server"
+        python -m mcp_framework.build --platform ${{ matrix.mcp_platform }} --server file_write_server/file_write_server.py --no-test --output-dir "dist/file-write-server"
+        # 重命名并移动到最终位置
+        if [ -f "dist/file-write-server/file-write-server${{ matrix.executable_suffix }}" ]; then
+          mv "dist/file-write-server/file-write-server${{ matrix.executable_suffix }}" "dist/file-write-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+        else
+          # 处理MCP Framework生成的tar.gz文件或带时间戳的文件名
+          cd dist/file-write-server
+          # 首先尝试解压tar.gz文件
+          for tarfile in *.tar.gz; do
+            if [ -f "$tarfile" ]; then
+              echo "解压 $tarfile"
+              tar -xzf "$tarfile"
+              # 查找解压后的可执行文件
+              for exe in file-write-server*${{ matrix.executable_suffix }}; do
+                if [ -f "$exe" ] && [ -x "$exe" ]; then
+                  mv "$exe" "../file-write-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+                  cd ../..
+                  rm -rf "dist/file-write-server"
+                  exit 0
+                fi
+              done
+            fi
+          done
+          # 如果没有tar.gz文件，处理带时间戳的文件名
+          for exe in file-write-server*${{ matrix.executable_suffix }}; do
+            if [ -f "$exe" ]; then
+              mv "$exe" "../file-write-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+              break
+            fi
+          done
+          cd ../..
+        fi
+        rm -rf "dist/file-write-server"
+      shell: bash
+
+    # 8. 验证构建产物
+    - name: Verify build artifacts
+      shell: bash
+      run: |
+        echo "🧪 验证构建产物..."
+        
+        if [ ! -d "dist" ] || [ -z "$(ls -A dist 2>/dev/null)" ]; then
+          echo "❌ dist 目录为空或不存在"
+          exit 1
+        fi
+        
+        cd dist
+        
+        for exe in *${{ matrix.executable_suffix }}; do
+          if [ -f "$exe" ]; then
+            echo "✅ 找到: $exe"
+            
+            # 显示文件信息
+            ls -lh "$exe"
+            file "$exe" 2>/dev/null || echo "文件类型检查完成"
+            
+            # 仅在本地构建时测试可执行文件
+            if [ "${{ matrix.mcp_platform }}" = "native" ]; then
+              echo "测试可执行文件: $exe"
+              timeout 10s "./$exe" --help || echo "帮助测试完成: $exe"
+            fi
+          fi
+        done
+        
+        # Linux 特殊处理：确保文件权限正确
+        if [ "${{ matrix.platform }}" = "linux" ]; then
+          echo "🐧 Linux 权限修复:"
+          chmod +x *${{ matrix.executable_suffix }} 2>/dev/null || echo "权限修复完成"
+          ls -la *${{ matrix.executable_suffix }} 2>/dev/null || echo "没有找到可执行文件"
+        fi
+
+    # 9. macOS 特殊处理：显示架构信息
+    - name: macOS Architecture Info
+      if: matrix.platform == 'macos'
+      run: |
+        echo "🍎 macOS 架构信息:"
+        echo "Runner 架构: ${{ matrix.arch }}"
+        echo "系统架构: $(uname -m)"
+        echo "Python 架构: $(python -c 'import platform; print(platform.machine())')"
+        
+        if [ -d "dist" ]; then
+          echo "构建产物架构验证:"
+          cd dist
+          for exe in *; do
+            if [ -f "$exe" ] && [ -x "$exe" ]; then
+              echo "检查 $exe:"
+              file "$exe" || echo "文件检查完成"
+              # 在 macOS 上检查架构
+              lipo -info "$exe" 2>/dev/null || echo "架构检查完成"
+            fi
+          done
+        fi
+      shell: bash
+
+    # 10. 创建发布包
+    - name: Create release archive
+      shell: bash
+      run: |
+        echo "📦 创建发布包..."
+        cd dist
+        
+        # 显示要打包的文件
+        echo "要打包的文件:"
+        ls -la
+        
+        if [ "${{ matrix.platform }}" = "windows" ]; then
+          # Windows 使用 zip
+          if command -v 7z >/dev/null 2>&1; then
+            7z a ../${{ matrix.archive_name }}.zip *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}
+          else
+            powershell -Command "Compress-Archive -Path '*-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}' -DestinationPath '../${{ matrix.archive_name }}.zip'"
+          fi
+        else
+          # Linux 和 macOS 使用 tar.gz
+          if ls *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }} 1> /dev/null 2>&1; then
+            tar -czf ../${{ matrix.archive_name }}.tar.gz *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}
+          else
+            echo "警告: 未找到匹配的文件，打包所有文件"
+            tar -czf ../${{ matrix.archive_name }}.tar.gz *
+          fi
+        fi
+        
+        cd ..
+        echo "✅ 创建的发布包:"
+        ls -lh ${{ matrix.archive_name }}.* || dir ${{ matrix.archive_name }}.*
+
+    # 11. 上传构建产物
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.archive_name }}
+        path: |
+          ${{ matrix.archive_name }}.*
+        retention-days: 30
+        if-no-files-found: error
+
+    # 12. 构建摘要
+    - name: Build Summary
+      run: |
+        echo "✅ File Write Server ${{ matrix.platform }}-${{ matrix.arch }} 构建完成"
+        echo "📁 产物已上传为: ${{ matrix.archive_name }}"
+        echo "🔧 使用的构建平台: ${{ matrix.mcp_platform }}"
+      shell: bash
+
+  # 构建状态摘要
+  build-summary:
+    needs: build
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+    - name: File Write Server Build Summary
+      run: |
+        echo "🎯 File Write Server 跨平台构建摘要"
+        echo "============================="
+        echo "构建状态: ${{ needs.build.result }}"
+        echo ""
+        if [ "${{ needs.build.result }}" = "success" ]; then
+          echo "✅ 所有平台构建成功！"
+        else
+          echo "❌ 部分平台构建失败，请检查日志"
+        fi
+
+  # 创建 GitHub Release
+  release:
+    name: Create File Write Server Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') && needs.build.result == 'success'
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts/
+
+    - name: Display downloaded files
+      run: |
+        echo "📥 下载的构建产物:"
+        find artifacts/ -type f -name "*" | head -20
+        
+        echo ""
+        echo "📊 产物大小:"
+        find artifacts/ -type f -exec ls -lh {} \;
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: artifacts/*/*
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+        body: |
+          ## 🚀 File Write Server Release ${{ github.ref_name }}
+          
+          此版本包含 File Write Server 的跨平台构建产物：
+          
+          ### 📦 File Write Server
+          - **功能**: 基于行号的精准文件修改服务
+          - **支持操作**: 文件创建、编辑、插入、删除、查看
+          - **精准定位**: 支持行号级别的精确文件操作
+          
+          ### 🚀 快速开始
+          1. 下载适合您平台的压缩包
+          2. 解压缩文件
+          3. 直接运行可执行文件：`./file-write-server-{platform}-{arch}`
+          
+          ### 📋 平台支持
+          - **Linux x86_64**: `file-write-server-linux-x86_64.tar.gz`
+          - **Windows x86_64**: `file-write-server-windows-x86_64.zip`
+          - **macOS Intel x86_64**: `file-write-server-macos-intel-x86_64.tar.gz`
+          - **macOS Apple Silicon ARM64 (M1/M2/M3)**: `file-write-server-macos-apple-silicon-arm64.tar.gz`
+          
+          ### 🛠️ 技术信息
+          - Python 版本: ${{ env.PYTHON_VERSION }}
+          - 构建工具: MCP Framework
+          - 构建时间: ${{ github.run_number }}
+          - 提交哈希: ${{ github.sha }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
