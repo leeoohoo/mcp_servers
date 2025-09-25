@@ -1263,6 +1263,26 @@ async with ConfigClient("server.py") as client:
 
 MCP Framework 提供了 `SimpleClient` 类，这是一个统一的简化客户端接口，整合了工具调用和配置管理功能，让客户端使用变得极其简单。
 
+> **🆕 最新更新**: `SimpleClient` 现已支持流式工具调用！可以实时获取长时间运行任务的输出，提供更好的用户体验。支持异步流式调用 `call_stream()`、快速流式调用 `quick_call_stream()` 和同步流式调用 `sync_call_stream()`。
+
+### 📋 简化客户端功能目录
+
+1. [SimpleClient 基础用法](#1-simpleclient-基础用法)
+2. [快速函数（一行代码调用）](#2-快速函数一行代码调用)
+3. [同步版本（无需 async/await）](#3-同步版本无需-asyncawait)
+4. [带别名的服务器调用](#4-带别名的服务器调用)
+5. [完整的客户端示例](#5-完整的客户端示例)
+6. [错误处理](#6-错误处理)
+7. [流式工具调用](#7-流式工具调用) ⭐ **新功能**
+   - [基础流式调用](#71-基础流式调用)
+   - [快速流式调用](#72-快速流式调用)
+   - [同步流式调用](#73-同步流式调用)
+   - [流式调用的错误处理](#74-流式调用的错误处理)
+   - [流式调用的实际应用场景](#75-流式调用的实际应用场景)
+   - [流式调用 vs 普通调用的选择](#76-流式调用-vs-普通调用的选择)
+8. [与其他客户端的对比](#8-与其他客户端的对比)
+9. [最佳实践](#9-最佳实践)
+
 ### 1. SimpleClient 基础用法
 
 最简单的客户端使用方式：
@@ -1480,7 +1500,171 @@ async def error_handling_example():
 asyncio.run(error_handling_example())
 ```
 
-### 7. 与其他客户端的对比
+### 7. 流式工具调用
+
+`SimpleClient` 支持流式工具调用，可以实时获取工具执行过程中的输出内容：
+
+#### 7.1 基础流式调用
+
+```python
+import asyncio
+from mcp_framework.client.simple import SimpleClient
+
+async def streaming_example():
+    """流式工具调用示例"""
+    
+    async with SimpleClient("simple_stdio_server.py", alias="demo") as client:
+        print("=== 流式工具调用 ===")
+        
+        # 调用流式工具，实时获取输出
+        print("开始倒计时:")
+        async for chunk in client.call_stream("countdown", start=5):
+            print(chunk, end="", flush=True)
+        print("\n倒计时完成！")
+        
+        # 调用其他流式工具
+        print("\n生成文本:")
+        async for chunk in client.call_stream("generate_text", 
+                                            prompt="写一首关于春天的诗", 
+                                            max_length=100):
+            print(chunk, end="", flush=True)
+        print("\n文本生成完成！")
+
+if __name__ == "__main__":
+    asyncio.run(streaming_example())
+```
+
+#### 7.2 快速流式调用
+
+对于一次性的流式调用，可以使用快速函数：
+
+```python
+import asyncio
+from mcp_framework.client.simple import quick_call_stream
+
+async def quick_streaming_demo():
+    """快速流式调用示例"""
+    
+    print("快速流式调用倒计时:")
+    async for chunk in quick_call_stream("simple_stdio_server.py", 
+                                       "countdown", 
+                                       alias="demo",
+                                       start=3):
+        print(chunk, end="", flush=True)
+    print("\n完成！")
+
+asyncio.run(quick_streaming_demo())
+```
+
+#### 7.3 同步流式调用
+
+对于不想使用异步的场景，提供了同步版本（会收集所有流式输出并返回完整结果）：
+
+```python
+from mcp_framework.client.simple import sync_call_stream
+
+# 同步流式调用（收集完整输出）
+result = sync_call_stream("simple_stdio_server.py", 
+                         "countdown", 
+                         alias="demo",
+                         start=3)
+print(f"完整输出: {result}")
+
+# 带别名的同步流式调用
+result = sync_call_stream("server.py", 
+                         "generate_report", 
+                         alias="my_server",
+                         topic="月度销售报告",
+                         format="markdown")
+print(f"生成的报告: {result}")
+```
+
+#### 7.4 流式调用的错误处理
+
+```python
+import asyncio
+from mcp_framework.client.simple import SimpleClient
+
+async def streaming_error_handling():
+    """流式调用的错误处理"""
+    
+    async with SimpleClient("server.py") as client:
+        try:
+            async for chunk in client.call_stream("non_existent_tool"):
+                print(chunk, end="")
+        except Exception as e:
+            print(f"流式调用错误: {e}")
+        
+        # 处理流式调用中的部分错误
+        try:
+            content = ""
+            async for chunk in client.call_stream("unstable_tool", param="value"):
+                content += chunk
+                print(chunk, end="", flush=True)
+            print(f"\n完整内容: {content}")
+        except Exception as e:
+            print(f"\n流式调用中断: {e}")
+            print(f"已接收内容: {content}")
+
+asyncio.run(streaming_error_handling())
+```
+
+#### 7.5 流式调用的实际应用场景
+
+```python
+import asyncio
+from mcp_framework.client.simple import SimpleClient
+
+async def practical_streaming_examples():
+    """流式调用的实际应用场景"""
+    
+    async with SimpleClient("ai_server.py", alias="ai") as client:
+        
+        # 场景1: 实时代码生成
+        print("=== 实时代码生成 ===")
+        async for chunk in client.call_stream("generate_code", 
+                                            language="python",
+                                            description="计算斐波那契数列"):
+            print(chunk, end="", flush=True)
+        
+        # 场景2: 长文本翻译
+        print("\n\n=== 长文本翻译 ===")
+        long_text = "这是一段很长的中文文本..." * 100
+        async for chunk in client.call_stream("translate_text",
+                                            text=long_text,
+                                            target_language="english"):
+            print(chunk, end="", flush=True)
+        
+        # 场景3: 数据处理进度
+        print("\n\n=== 数据处理进度 ===")
+        async for chunk in client.call_stream("process_large_dataset",
+                                            dataset_path="/path/to/data.csv",
+                                            operation="analysis"):
+            print(chunk, end="", flush=True)
+        
+        # 场景4: 实时日志输出
+        print("\n\n=== 实时日志输出 ===")
+        async for chunk in client.call_stream("run_system_command",
+                                            command="ls -la",
+                                            working_dir="/tmp"):
+            print(chunk, end="", flush=True)
+
+if __name__ == "__main__":
+    asyncio.run(practical_streaming_examples())
+```
+
+#### 7.6 流式调用 vs 普通调用的选择
+
+| 场景 | 推荐方式 | 原因 |
+|------|----------|------|
+| **快速响应的工具** | 普通调用 `call()` | 无需流式，简单直接 |
+| **长时间运行的任务** | 流式调用 `call_stream()` | 实时反馈，用户体验好 |
+| **大量文本生成** | 流式调用 `call_stream()` | 逐步显示，避免长时间等待 |
+| **数据处理任务** | 流式调用 `call_stream()` | 显示进度，便于监控 |
+| **简单查询** | 普通调用 `call()` | 结果简短，无需流式 |
+| **AI对话生成** | 流式调用 `call_stream()` | 模拟打字效果，体验自然 |
+
+### 8. 与其他客户端的对比
 
 #### 传统方式（复杂）
 ```python
@@ -1510,13 +1694,16 @@ async def simple_way():
         await client.set("key", "value")
 ```
 
-### 8. 最佳实践
+### 9. 最佳实践
 
 1. **使用上下文管理器**: 始终使用 `async with` 确保资源正确释放
 2. **错误处理**: 工具调用可能抛出异常，配置操作会静默失败
 3. **别名使用**: 为服务器设置有意义的别名，便于管理
 4. **同步vs异步**: 在异步环境中使用异步版本，简单脚本可以使用同步版本
 5. **一次性调用**: 对于简单的一次性操作，使用快速函数更方便
+6. **流式调用选择**: 根据任务特性选择普通调用或流式调用，长时间任务优先使用流式
+7. **流式输出处理**: 使用 `flush=True` 确保流式输出实时显示，适当添加错误处理
+8. **性能考虑**: 流式调用适合大数据量或长时间任务，简单查询使用普通调用即可
 
 ## 🔧 高级示例
 

@@ -37,7 +37,13 @@ class ChatHistoryManager:
             logger.info("📝 聊天记录功能已禁用")
             return
 
-        if self.mongodb_url and PYMONGO_AVAILABLE:
+        # 检查是否为测试模式
+        import os
+        testing_mode = os.environ.get("TESTING_MODE", "false").lower() == "true"
+        
+        if testing_mode:
+            logger.info("🧪 测试模式：跳过MongoDB连接，使用文件存储")
+        elif self.mongodb_url and PYMONGO_AVAILABLE:
             try:
                 self.mongo_client = MongoClient(self.mongodb_url, serverSelectionTimeoutMS=5000)
                 # 测试连接

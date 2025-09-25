@@ -15,9 +15,7 @@ except ImportError:
     PYMONGO_AVAILABLE = False
 
 # 导入MCP框架
-from mcp_framework import (
-    run_server_main,
-)
+from mcp_framework import simple_main
 
 # 配置日志
 logger = logging.getLogger("expert_server")
@@ -30,14 +28,8 @@ def main():
     # 创建服务器实例
     server = ExpertMCPServerAnnotated()
     
-    # 使用新的启动器
-    run_server_main(
-        server_instance=server,
-        server_name="Expert Stream Server",
-        default_port=8083,
-        default_host="localhost",
-        required_dependencies=["openai", "aiohttp"]
-    )
+    # 使用简化启动器
+    simple_main(server_instance=server, server_name="expert_stream_server")
 
 
 if __name__ == "__main__":

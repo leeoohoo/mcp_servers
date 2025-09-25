@@ -21,7 +21,7 @@ from typing_extensions import Annotated
 
 # 导入文件读取服务
 from file_reader_service import FileReaderService
-from mcp_framework.core import EnhancedMCPServer
+from mcp_framework import EnhancedMCPServer
 
 # 导入装饰器
 from mcp_framework.core.decorators import (

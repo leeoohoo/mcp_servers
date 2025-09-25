@@ -97,7 +97,15 @@ class ExpertService:
 
     async def initialize(self):
         """初始化服务"""
-        await self.mcp_tool_execute.init()
+        # 检查是否在测试环境下，如果是则跳过 MCP 工具初始化
+        import os
+        if os.getenv("TESTING_MODE") == "true" or not self.mcp_servers:
+            logger.info("🧪 测试环境或无MCP服务器配置，跳过MCP工具初始化")
+            # 在测试环境下，初始化空的工具列表
+            self.mcp_tool_execute.tools = []
+            self.mcp_tool_execute.tool_metadata = {}
+        else:
+            await self.mcp_tool_execute.init()
         await self.chat_history.initialize()
 
     async def shutdown(self):

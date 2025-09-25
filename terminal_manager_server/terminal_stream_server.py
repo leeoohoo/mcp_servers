@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 # 导入 MCP 框架启动器
-from mcp_framework import run_server_main
+from mcp_framework import simple_main
 
 # 导入我们的服务器
 from terminal_manager_server.terminal_mcp_server import TerminalMCPServer
@@ -27,13 +27,10 @@ def main():
         # 创建服务器实例
         server = TerminalMCPServer()
         
-        # 使用 MCP 框架启动器启动服务器
-        run_server_main(
+        # 使用简化启动器启动服务器
+        simple_main(
             server_instance=server,
-            server_name="Terminal MCP Server",
-            default_port=8080,
-            default_host="localhost",
-            required_dependencies=["pymongo", "psutil", "aiohttp"]
+            server_name="terminal_manager_server"
         )
     except Exception as e:
         logger.error(f"启动服务器失败: {e}")

@@ -281,18 +281,15 @@ def main():
     """主函数"""
     try:
         # 导入 MCP 框架启动器
-        from mcp_framework import run_server_main
+        from mcp_framework import simple_main
         
         # 创建服务器实例
         server = TaskManagerServer()
         
-        # 使用 MCP 框架启动器启动服务器
-        run_server_main(
+        # 使用简化启动器启动服务器
+        simple_main(
             server_instance=server,
-            server_name="Task Manager MCP Server",
-            default_port=8004,
-            default_host="localhost",
-            required_dependencies=[]
+            server_name="task_manager_server"
         )
     except Exception as e:
         logger.error(f"启动服务器失败: {e}")
