@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 import asyncio
 import os
+import sys
 from typing import Annotated, Optional, Any, AsyncGenerator
-from mcp_framework import EnhancedMCPServer, run_server_main
+from mcp_framework import EnhancedMCPServer, run_server_main, simple_main
+from mcp_framework.core.multi_launcher import (
+    run_stdio_server_main,
+    run_dual_server_main,
+    run_http_server_main
+)
+from mcp_framework.core.config import ServerConfigManager, ServerConfigAdapter
 from mcp_framework.core.decorators import (
     Required as R,
     Optional as O,
@@ -27,19 +34,16 @@ from operations import (
 )
 
 
-
-
-
 class FileWriteServer(EnhancedMCPServer):
     """文件修改 MCP 服务器"""
-    
+
     def __init__(self):
         super().__init__(
             name="FileWriteServer",
             version="1.0.0",
             description="基于行号的精准文件修改服务器"
         )
-        
+
         # 初始化操作实例
         self.operations = {
             "create": CreateOperation(self),
@@ -49,78 +53,71 @@ class FileWriteServer(EnhancedMCPServer):
             "delete": DeleteOperation(self),
             "view": ViewOperation(self)
         }
-    
 
-    
-
-        
-    
     async def initialize(self):
         """初始化服务器"""
         self.logger.info("FileWriteServer 初始化完成")
-    
 
-    
     @property
     def setup_server_params(self):
         """设置服务器参数装饰器"""
-        
+
         @self.decorators.server_param("project_root")
         async def project_root_param(
-            param: Annotated[str, PathParam(
-                display_name="项目根目录",
-                description="服务器操作的根目录路径，留空使用当前目录",
-                required=False,
-                placeholder="/path/to/project"
-            )]
+                param: Annotated[str, PathParam(
+                    display_name="项目根目录",
+                    description="服务器操作的根目录路径，留空使用当前目录",
+                    required=False,
+                    placeholder="/path/to/project"
+                )]
         ):
             """项目根目录参数"""
             pass
-        
+
         @self.decorators.server_param("max_file_size")
         async def max_file_size_param(
-            param: Annotated[int, ServerParam(
-                display_name="最大文件大小 (MB)",
-                description="允许修改的最大文件大小，单位MB",
-                param_type="integer",
-                default_value=10,
-                required=False
-            )]
+                param: Annotated[int, ServerParam(
+                    display_name="最大文件大小 (MB)",
+                    description="允许修改的最大文件大小，单位MB",
+                    param_type="integer",
+                    default_value=10,
+                    required=False
+                )]
         ):
             """最大文件大小参数"""
             pass
-        
+
         @self.decorators.server_param("enable_hidden_files")
         async def enable_hidden_files_param(
-            param: Annotated[bool, BooleanParam(
-                display_name="启用隐藏文件",
-                description="是否允许修改以点(.)开头的隐藏文件",
-                default_value=False,
-                required=False
-            )]
+                param: Annotated[bool, BooleanParam(
+                    display_name="启用隐藏文件",
+                    description="是否允许修改以点(.)开头的隐藏文件",
+                    default_value=False,
+                    required=False
+                )]
         ):
             """启用隐藏文件参数"""
             pass
-        
+
         @self.decorators.server_param("auto_backup")
         async def auto_backup_param(
-            param: Annotated[bool, BooleanParam(
-                display_name="自动备份",
-                description="修改文件前是否自动创建备份",
-                default_value=False,
-                required=False
-            )]
+                param: Annotated[bool, BooleanParam(
+                    display_name="自动备份",
+                    description="修改文件前是否自动创建备份",
+                    default_value=False,
+                    required=False
+                )]
         ):
             """自动备份参数"""
             pass
-        
+
         return True
-    
+
     async def on_config_updated(self, config_key: str, new_value: Any) -> None:
         """配置更新回调方法"""
         self.logger.info(f"配置已更新: {config_key} = {new_value}")
         # 这里可以根据需要添加特定配置的处理逻辑
-    
+
     @property
     def setup_tools(self):
         """设置工具装饰器"""
@@ -201,34 +198,33 @@ class FileWriteServer(EnhancedMCPServer):
             """简单易用的文件操作工具"""
             try:
                 yield f"\n🔧 操作: {action}\n"
-                
+
                 # 检查操作是否支持
                 if action not in self.operations:
                     yield f"\n❌ 不支持的操作: {action}\n"
                     yield f"\n📋 支持操作: {', '.join(self.operations.keys())}\n"
                     return
-                
+
                 # 使用对应的操作实例执行操作
                 operation = self.operations[action]
                 async for result in operation.execute(file_path, line, content):
                     yield result
-                
 
-                
 
-                
+
+
+
             except Exception as e:
                 yield f"\n❌ 操作失败: {str(e)}\n"
                 yield f"\n📁 文件路径: {file_path}\n"
-        
+
         return True
+
+
+def main():
+    simple_main(server_instance=FileWriteServer(), server_name="file_write_server")
 
 
 # 启动服务器
 if __name__ == "__main__":
-    server = FileWriteServer()
-    run_server_main(
-        server_instance=server,
-        server_name="FileWriteServer",
-        default_port=8080
-    )
+    main()

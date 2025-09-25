@@ -10,33 +10,17 @@ File Reader MCP Server (注解版本)
 4. get_project_structure - 获取项目结构（流式输出）
 """
 
-import asyncio
 import json
 import logging
-import os
-import re
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, AsyncGenerator
 from typing_extensions import Annotated
 
-# Whoosh相关导入
-from whoosh.index import create_in, open_dir, exists_in
-from whoosh.fields import Schema, TEXT, ID, DATETIME
-from whoosh.qparser import QueryParser
-from whoosh.highlight import Highlighter, ContextFragmenter
+
 
 # 导入文件读取服务
 from file_reader_service import FileReaderService
-
-# 导入新的框架
-from mcp_framework import (
-
-    MCPHTTPServer,
-    ConfigManager,
-    setup_logging,
-    check_dependencies
-)
 from mcp_framework.core import EnhancedMCPServer
 
 # 导入装饰器
@@ -317,18 +301,15 @@ def main():
     """主函数"""
     try:
         # 导入 MCP 框架启动器
-        from mcp_framework import run_server_main
+        from mcp_framework import simple_main
         
         # 创建服务器实例
         server = FileReaderMCPServer()
         
         # 使用 MCP 框架启动器启动服务器
-        run_server_main(
+        simple_main(
             server_instance=server,
-            server_name="File Reader MCP Server",
-            default_port=8082,
-            default_host="localhost",
-            required_dependencies=[]
+            server_name="File Reader MCP Server"
         )
     except Exception as e:
         logger.error(f"启动服务器失败: {e}")
