@@ -1,6 +1,7 @@
 import json
 import logging
 import uuid
+import asyncio
 from typing import Any, Dict, List, Optional, AsyncGenerator
 import aiohttp
 
@@ -11,8 +12,9 @@ logger = logging.getLogger("McpToolExecute")
 class McpToolExecute:
     """MCP工具执行器"""
 
-    def __init__(self, mcp_servers: List[Dict[str, str]], role: str = ""):
-        self.mcp_servers = mcp_servers
+    def __init__(self, mcp_servers: List[Dict[str, str]], stdio_mcp_servers: List[Dict[str, str]] = None, role: str = ""):
+        self.mcp_servers = mcp_servers  # HTTP 协议的 MCP 服务器
+        self.stdio_mcp_servers = stdio_mcp_servers or []  # stdio 协议的 MCP 服务器
         self.tools = []
         self.tool_metadata = {}  # 存储工具元数据
         self.role = role
@@ -20,8 +22,6 @@ class McpToolExecute:
     async def init(self):
         """初始化，构建工具列表"""
         await self.build_tools()
-
-    # execute 非流式方法已移除
 
     async def execute_stream(self, tool_calls: List[Dict[str, Any]], callback=None) -> AsyncGenerator[Dict[str, Any], None]:
         """执行工具调用（流式版本）"""
@@ -63,13 +63,29 @@ class McpToolExecute:
                 tool_call_id = tool_call.get('id', f"call_{uuid.uuid4().hex[:16]}")
 
                 try:
-                    stream_generator = self.call_mcp_tool_stream(
-                        tool_info['server_url'],
-                        tool_info['original_name'],
-                        tool_args
-                    )
+                    # 根据协议类型选择调用方式
+                    protocol = tool_info.get('protocol', 'http')
+                    
+                    if protocol == 'stdio':
+                        # 使用 stdio 协议调用
+                        logger.info(f"🔧 使用stdio协议调用工具: {tool_name}")
+                        stream_generator = self.call_stdio_tool_stream(
+                            tool_info['server_name'],
+                            tool_info['command'],
+                            tool_info['alias'],
+                            tool_info['original_name'],
+                            tool_args
+                        )
+                    else:
+                        # 使用 HTTP 协议调用
+                        logger.info(f"🔧 使用HTTP协议调用工具: {tool_name}")
+                        stream_generator = self.call_mcp_tool_stream(
+                            tool_info['server_url'],
+                            tool_info['original_name'],
+                            tool_args
+                        )
 
-                    logger.info(f"🔧 开始流式调用工具: {tool_name}")
+                    logger.info(f"🔧 开始流式调用工具: {tool_name} (协议: {protocol})")
                     chunk_count = 0
                     
                     async for chunk in stream_generator:
@@ -192,7 +208,7 @@ class McpToolExecute:
 
 
     def find_tool_info(self, tool_name: str) -> Optional[Dict[str, str]]:
-        """根据工具名称查找工具信息"""
+        """查找工具信息"""
         return self.tool_metadata.get(tool_name)
 
     async def call_mcp_tool_stream(self, server_url: str, tool_name: str, arguments: Dict[str, Any]) -> AsyncGenerator[str, None]:
@@ -361,6 +377,24 @@ class McpToolExecute:
         finally:
             await self._cleanup_stream_resources(response, session, tool_name)
 
+    async def call_stdio_tool_stream(self, server_name: str, command: str, alias: str, tool_name: str, arguments: Dict[str, Any]) -> AsyncGenerator[str, None]:
+        """使用 stdio 协议调用工具（流式版本）"""
+        try:
+            logger.info(f"🔧 开始stdio工具调用: {tool_name} on {server_name} (alias: {alias})")
+            
+            # 使用 SimpleClient 调用工具
+            from mcp_framework.client.simple import SimpleClient
+            
+            async with SimpleClient(command, alias=alias, config_dir="/Users/lilei/project/config/test_mcp_server_config") as client:
+                # 使用流式调用工具
+                async for chunk in client.call_stream(tool_name, **arguments):
+                    yield chunk
+                    
+        except Exception as e:
+            logger.error(f"❌ stdio工具调用失败 {tool_name}: {e}")
+            error_msg = f"Error calling stdio tool {tool_name}: {str(e)}"
+            yield error_msg
+
     async def _cleanup_stream_resources(self, response, session, tool_name: str):
         """清理流式资源"""
         try:
@@ -413,11 +447,12 @@ class McpToolExecute:
             self.tools = []
             self.tool_metadata = {}
 
-            logger.info(f"🔧 开始构建工具列表，配置的MCP服务器数量: {len(self.mcp_servers)}")
+            logger.info(f"🔧 开始构建工具列表，配置的HTTP MCP服务器数量: {len(self.mcp_servers)}, stdio MCP服务器数量: {len(self.stdio_mcp_servers)}")
 
+            # 处理 HTTP 协议的 MCP 服务器
             for mcp_server in self.mcp_servers:
                 try:
-                    logger.info(f"🔧 正在从MCP服务器获取工具: {mcp_server['name']} ({mcp_server['url']})")
+                    logger.info(f"🔧 正在从HTTP MCP服务器获取工具: {mcp_server['name']} ({mcp_server['url']})")
 
                     # 调用MCP服务获取tools
                     request = {
@@ -446,7 +481,7 @@ class McpToolExecute:
 
                             result = data.get('result', {})
                             server_tools = result.get('tools', []) if isinstance(result, dict) else []
-                            logger.info(f"✅ 从 {mcp_server['name']} 获取到 {len(server_tools)} 个工具")
+                            logger.info(f"✅ 从HTTP服务器 {mcp_server['name']} 获取到 {len(server_tools)} 个工具")
 
                             # 转换为OpenAI工具格式
                             for tool in server_tools:
@@ -465,14 +500,67 @@ class McpToolExecute:
                                 self.tool_metadata[prefixed_name] = {
                                     'original_name': tool['name'],
                                     'server_name': mcp_server['name'],
-                                    'server_url': mcp_server['url']
+                                    'server_url': mcp_server['url'],
+                                    'protocol': 'http'
                                 }
 
                                 self.tools.append(openai_tool)
-                                logger.info(f"  - 添加工具: {prefixed_name} ({tool.get('description', '')})")
+                                logger.info(f"  - 添加HTTP工具: {prefixed_name} ({tool.get('description', '')})")
 
                 except Exception as e:
-                    logger.error(f"❌ Failed to get tools from MCP server {mcp_server['name']}: {e}")
+                    logger.error(f"❌ Failed to get tools from HTTP MCP server {mcp_server['name']}: {e}")
+                    continue
+
+            # 处理 stdio 协议的 MCP 服务器
+            for stdio_server in self.stdio_mcp_servers:
+                try:
+                    server_name = stdio_server['name']
+                    command = stdio_server['command']
+                    alias = stdio_server.get('alias', server_name)  # 使用配置中的 alias，如果没有则使用 server_name
+                    logger.info(f"🔧 正在从stdio MCP服务器获取工具: {server_name} ({command}) alias: {alias}")
+
+                    # 使用 SimpleClient 获取工具列表
+                    from mcp_framework.client.simple import SimpleClient
+                    
+                    async with SimpleClient(command, alias=alias) as client:
+                        # 获取工具列表
+                        tool_names = await client.tools()
+                        
+                        if tool_names:
+                            logger.info(f"✅ 从stdio服务器 {server_name} 获取到 {len(tool_names)} 个工具")
+
+                            # 转换为OpenAI工具格式
+                            for tool_name in tool_names:
+                                # 获取工具详细信息
+                                tool_info = await client.tool_info(tool_name)
+                                
+                                prefixed_name = f"{server_name}_{tool_name}"
+
+                                openai_tool = {
+                                    'type': 'function',
+                                    'function': {
+                                        'name': prefixed_name,
+                                        'description': tool_info.description if tool_info else '',
+                                        'parameters': tool_info.inputSchema if tool_info and hasattr(tool_info, 'inputSchema') else {}
+                                    }
+                                }
+
+                                # 存储元数据
+                                self.tool_metadata[prefixed_name] = {
+                                    'original_name': tool_name,
+                                    'server_name': server_name,
+                                    'command': command,
+                                    'alias': alias,
+                                    'protocol': 'stdio'
+                                }
+
+                                self.tools.append(openai_tool)
+                                logger.info(f"  - 添加stdio工具: {prefixed_name} ({tool_info.description if tool_info else ''})")
+                        else:
+                            logger.warning(f"❌ 从stdio服务器 {server_name} 获取工具列表失败: 无工具返回")
+
+                except Exception as e:
+                    logger.error(f"❌ Failed to get tools from stdio MCP server {server_name}: {e}")
                     continue
 
             logger.info(f"🛠️ 工具列表构建完成，总计 {len(self.tools)} 个工具")

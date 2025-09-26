@@ -97,6 +97,9 @@ class ExpertMCPServerAnnotated(EnhancedMCPServer):
             """获取专家服务器配置信息"""
             mcp_servers_config = self.get_config_value("mcp_servers", "")
             mcp_servers = self._parse_mcp_servers_config(mcp_servers_config)
+            
+            stdio_mcp_servers_config = self.get_config_value("stdio_mcp_servers", "")
+            stdio_mcp_servers = self._parse_mcp_servers_config(stdio_mcp_servers_config)
 
             return {
                 "contents": [{
@@ -108,7 +111,8 @@ class ExpertMCPServerAnnotated(EnhancedMCPServer):
                             "base_url": self.get_config_value("base_url", "https://api.openai.com/v1"),
                             "model_name": self.get_config_value("model_name", "gpt-3.5-turbo"),
                             "system_prompt": self.get_config_value("system_prompt", ""),
-                            "mcp_servers": mcp_servers
+                            "mcp_servers": mcp_servers,
+                            "stdio_mcp_servers": stdio_mcp_servers
                         }
                     }, ensure_ascii=False)
                 }]
@@ -183,6 +187,19 @@ class ExpertMCPServerAnnotated(EnhancedMCPServer):
             )]
         ):
             """MCP服务器配置参数"""
+            pass
+        
+        @self.decorators.server_param("stdio_mcp_servers")
+        async def stdio_mcp_servers_param(
+            param: Annotated[str, StringParam(
+                display_name="Stdio协议MCP服务器配置",
+                description="Stdio协议MCP服务器配置（格式：name1:script_path1--alias,name2:script_path2--alias）",
+                required=False,
+                default_value="",
+                placeholder="file-manager:file_manager.py--alias,task-runner:task_runner.js--alias"
+            )]
+        ):
+            """Stdio协议MCP服务器配置参数"""
             pass
         
         @self.decorators.server_param("mongodb_url")
@@ -350,6 +367,7 @@ class ExpertMCPServerAnnotated(EnhancedMCPServer):
             "model_name": self.get_config_value("model_name", "gpt-3.5-turbo"),
             "system_prompt": self.get_config_value("system_prompt", "你是一个专业的AI助手，能够提供准确、详细和有用的回答。"),
             "mcp_servers": self.get_config_value("mcp_servers", ""),
+            "stdio_mcp_servers": self.get_config_value("stdio_mcp_servers", ""),
             "mongodb_url": self.get_config_value("mongodb_url", ""),
             "history_limit": self.get_config_value("history_limit", 10),
             "enable_history": self.get_config_value("enable_history", True),

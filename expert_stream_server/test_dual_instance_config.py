@@ -19,7 +19,7 @@ class DualInstanceTester:
         print(f"\n🧪 测试实例 '{alias}'...")
         
         try:
-            async with SimpleClient(self.server_script, alias=alias) as client:
+            async with SimpleClient(self.server_script, alias=alias, config_dir="/Users/lilei/project/config/test_mcp_server_config") as client:
                 print(f"✅ 成功连接到实例 '{alias}'")
                 
                 # 获取工具列表
@@ -61,7 +61,7 @@ class DualInstanceTester:
         async def test_instance_concurrent(alias: str):
             """并发测试单个实例"""
             try:
-                async with SimpleClient(self.server_script, alias=alias) as client:
+                async with SimpleClient(self.server_script, alias=alias, config_dir="/Users/lilei/project/config/test_mcp_server_config") as client:
                     # 发送测试查询
                     result = await client.call("query_expert_stream",
                         question=f"并发测试 - 实例 {alias}，请回复确认。时间戳: {asyncio.get_event_loop().time()}"
@@ -104,17 +104,17 @@ class DualInstanceTester:
         
         try:
             # 在第一个实例中设置配置
-            async with SimpleClient(self.server_script, alias="test_no_config") as client1:
+            async with SimpleClient(self.server_script, alias="test_no_config", config_dir="/Users/lilei/project/config/test_mcp_server_config") as client1:
                 await client1.set("test_isolation_1", "实例1的配置值")
                 print("   ✅ 实例1设置配置成功")
             
             # 在第二个实例中设置不同的配置
-            async with SimpleClient(self.server_script, alias="test_with_config") as client2:
+            async with SimpleClient(self.server_script, alias="test_with_config", config_dir="/Users/lilei/project/config/test_mcp_server_config") as client2:
                 await client2.set("test_isolation_2", "实例2的配置值")
                 print("   ✅ 实例2设置配置成功")
             
             # 验证每个实例都能访问自己的配置
-            async with SimpleClient(self.server_script, alias="test_no_config") as client1:
+            async with SimpleClient(self.server_script, alias="test_no_config", config_dir="/Users/lilei/project/config/test_mcp_server_config") as client1:
                 value1 = await client1.get("test_isolation_1", "未设置")
                 if value1 == "实例1的配置值":
                     print("   ✅ 实例1能访问自己的配置")
@@ -122,7 +122,7 @@ class DualInstanceTester:
                     print(f"   ❌ 实例1配置验证失败: {value1}")
                     return False
             
-            async with SimpleClient(self.server_script, alias="test_with_config") as client2:
+            async with SimpleClient(self.server_script, alias="test_with_config", config_dir="/Users/lilei/project/config/test_mcp_server_config") as client2:
                 value2 = await client2.get("test_isolation_2", "未设置")
                 if value2 == "实例2的配置值":
                     print("   ✅ 实例2能访问自己的配置")
@@ -145,7 +145,7 @@ class DualInstanceTester:
             
             # 获取两个实例的工具信息
             for alias in ["test_no_config", "test_with_config"]:
-                async with SimpleClient(self.server_script, alias=alias) as client:
+                async with SimpleClient(self.server_script, alias=alias, config_dir="/Users/lilei/project/config/test_mcp_server_config") as client:
                     tools = await client.tools()
                     tool_info = await client.tool_info("query_expert_stream") if await client.has_tool("query_expert_stream") else None
                     
@@ -184,7 +184,7 @@ class DualInstanceTester:
         try:
             # 为两个实例设置不同的配置 - 包含所有可用的配置参数
             configs_to_test = {
-                "test_no_config": {
+                "test_no_config1": {
                     "server_name": "ExpertStreamServer",
                     "log_level": "DEBUG",
                     "max_connections": 50,
@@ -196,6 +196,8 @@ class DualInstanceTester:
                     "system_prompt": "你是一个专业的AI助手，能够提供准确、详细和有用的回答。",
                     # MCP服务器配置（测试模式下为空）
                     "mcp_servers": "[]",
+                    # stdio MCP服务器配置
+                    "stdio_mcp_servers": "",
                     # 数据库配置
                     "mongodb_url": "",
                     # 历史记录配置
@@ -226,6 +228,8 @@ class DualInstanceTester:
                     "system_prompt": "你是一个专业的AI助手，能够通过工具帮用查询当前目录下的内容。",
                     # MCP服务器配置（测试模式下为空）
                     "mcp_servers": "[]",
+                    # stdio MCP服务器配置
+                    "stdio_mcp_servers": "file-writer:../file_write_server/file_write_server.py--test_no_config",
                     # 数据库配置
                     "mongodb_url": "mongodb://localhost:27017/chat_history",
                     # 历史记录配置
@@ -253,7 +257,7 @@ class DualInstanceTester:
                 
                 try:
                     # 使用 SimpleClient 进行配置管理
-                    async with SimpleClient(self.server_script, alias=alias) as client:
+                    async with SimpleClient(self.server_script, alias=alias, config_dir="/Users/lilei/project/config/test_mcp_server_config") as client:
                         print(f"   ✅ 成功连接到 SimpleClient '{alias}'")
                         
                         # 获取当前配置
@@ -321,7 +325,7 @@ class DualInstanceTester:
                 print(f"\n   测试实例 '{alias}' 的 SimpleClient 配置...")
                 
                 try:
-                    async with SimpleClient(self.server_script, alias=alias) as client:
+                    async with SimpleClient(self.server_script, alias=alias, config_dir="/Users/lilei/project/config/test_mcp_server_config") as client:
                         # 获取配置
                         config = await client.config()
                         print(f"   📋 获取配置成功: {len(config)} 项")
@@ -343,6 +347,8 @@ class DualInstanceTester:
                             "system_prompt": f"测试系统提示词 for {alias}",
                             # MCP服务器配置测试
                             "mcp_servers": f"test-server:http://localhost:800{len(alias)}/mcp",
+                            # stdio MCP服务器配置测试
+                            "stdio_mcp_servers": f"test-stdio-{alias}:../file_write_server/file_write_server.py--test-{alias}" if alias == "test_with_config" else "",
                             # 历史记录配置测试
                             "history_limit": "15" if alias == "test_no_config" else "25",
                             "enable_history": alias == "test_with_config",

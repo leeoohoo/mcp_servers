@@ -14,6 +14,47 @@ from mcp_framework.core import parse_mcp_servers_config
 logger = logging.getLogger("ExpertService")
 
 
+def parse_stdio_mcp_servers_config(config_str: str) -> List[Dict[str, str]]:
+    """解析 stdio MCP 服务器配置字符串
+    
+    格式: name1:script_path1--alias,name2:script_path2--alias
+    例如: file-manager:file_manager.py--file-mgr,task-runner:task_runner.js--task-mgr
+    """
+    if not config_str or not config_str.strip():
+        return []
+    
+    servers = []
+    for server_config in config_str.split(','):
+        server_config = server_config.strip()
+        if not server_config:
+            continue
+            
+        try:
+            # 分割 name:script_path--alias
+            if '--' in server_config:
+                name_script, alias = server_config.split('--', 1)
+                name, script_path = name_script.split(':', 1)
+                
+                servers.append({
+                    'name': name.strip(),
+                    'command': script_path.strip(),
+                    'alias': alias.strip()
+                })
+            else:
+                # 兼容没有 alias 的格式
+                name, script_path = server_config.split(':', 1)
+                servers.append({
+                    'name': name.strip(),
+                    'command': script_path.strip(),
+                    'alias': name.strip()  # 使用 name 作为 alias
+                })
+        except ValueError as e:
+            logger.warning(f"⚠️ 跳过无效的stdio服务器配置: {server_config} - {e}")
+            continue
+    
+    return servers
+
+
 class ExpertService:
     """专家服务类"""
 
@@ -25,6 +66,11 @@ class ExpertService:
         if mcp_servers:
             logger.info(f"🔧 解析到的MCP服务器: {mcp_servers}")
         
+        # 解析 stdio MCP 服务器配置
+        stdio_mcp_servers = parse_stdio_mcp_servers_config(config_values.get("stdio_mcp_servers", ""))
+        if stdio_mcp_servers:
+            logger.info(f"🔧 解析到的Stdio MCP服务器: {stdio_mcp_servers}")
+        
         # 创建服务实例
         service = cls(
             api_key=config_values["api_key"],
@@ -32,6 +78,7 @@ class ExpertService:
             model_name=config_values["model_name"],
             system_prompt=config_values["system_prompt"],
             mcp_servers=mcp_servers,
+            stdio_mcp_servers=stdio_mcp_servers,
             mongodb_url=config_values.get("mongodb_url", ""),
             history_limit=config_values.get("history_limit", 10),
             enable_history=config_values.get("enable_history", True),
@@ -50,7 +97,9 @@ class ExpertService:
 
     def __init__(self, api_key: str, base_url: str = "https://api.openai.com/v1",
                  model_name: str = "gpt-3.5-turbo", system_prompt: str = "",
-                 mcp_servers: List[Dict[str, str]] = None, mongodb_url: str = "",
+                 mcp_servers: List[Dict[str, str]] = None, 
+                 stdio_mcp_servers: List[Dict[str, str]] = None,
+                 mongodb_url: str = "",
                  history_limit: int = 10, enable_history: bool = True, role: str = "",
                  summary_interval: int = 5, max_rounds: int = 25,
                  summary_instruction: str = "", summary_request: str = "",
@@ -60,6 +109,7 @@ class ExpertService:
         self.model_name = model_name
         self.system_prompt = system_prompt or "你是一个专业的AI助手，能够提供准确、详细和有用的回答。"
         self.mcp_servers = mcp_servers or []
+        self.stdio_mcp_servers = stdio_mcp_servers or []
         self.role = role
 
         # 聊天历史配置
@@ -79,7 +129,7 @@ class ExpertService:
         # 移除停止标志，使用框架提供的停止功能
 
         # 初始化MCP工具执行器
-        self.mcp_tool_execute = McpToolExecute(self.mcp_servers, role=self.role)
+        self.mcp_tool_execute = McpToolExecute(self.mcp_servers, self.stdio_mcp_servers, role=self.role)
 
         # 初始化聊天记录管理器
         self.chat_history = ChatHistoryManager(
@@ -90,6 +140,7 @@ class ExpertService:
 
         logger.info(f"Expert Service initialized with model: {self.model_name}")
         logger.info(f"Configured MCP servers: {len(self.mcp_servers)}")
+        logger.info(f"Configured Stdio MCP servers: {len(self.stdio_mcp_servers)}")
         logger.info(f"Chat history enabled: {enable_history}, limit: {history_limit}")
         logger.info(f"Summary interval: {summary_interval} rounds")
         logger.info(f"Max rounds: {max_rounds} rounds")
@@ -99,7 +150,8 @@ class ExpertService:
         """初始化服务"""
         # 检查是否在测试环境下，如果是则跳过 MCP 工具初始化
         import os
-        if os.getenv("TESTING_MODE") == "true" or not self.mcp_servers:
+        has_mcp_servers = bool(self.mcp_servers or self.stdio_mcp_servers)
+        if os.getenv("TESTING_MODE") == "true" or not has_mcp_servers:
             logger.info("🧪 测试环境或无MCP服务器配置，跳过MCP工具初始化")
             # 在测试环境下，初始化空的工具列表
             self.mcp_tool_execute.tools = []

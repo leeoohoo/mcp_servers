@@ -20,7 +20,7 @@ class ToolCallTester:
         print("\n🧪 测试工具信息获取...")
         
         try:
-            async with SimpleClient(self.server_script, alias=self.alias) as client:
+            async with SimpleClient(self.server_script, alias=self.alias, config_dir="/Users/lilei/project/config/test_mcp_server_config") as client:
                 
                 # 检查是否有 query_expert_stream 工具
                 has_tool = await client.has_tool("query_expert_stream")
@@ -63,18 +63,18 @@ class ToolCallTester:
         print("\n🧪 测试 query_expert_stream 工具操作...")
         
         try:
-            async with SimpleClient(self.server_script, alias=self.alias) as client:
+            async with SimpleClient(self.server_script, alias=self.alias, config_dir="/Users/lilei/project/config/test_mcp_server_config") as client:
                 print("✅ 成功连接到服务器")
                 
                 # 1. 测试简单问题
                 print("\n1. 测试简单问题...")
                 try:
-                    print("问题: 什么是Python?")
+                    print("问题: 帮我看看这个项目是做什么的?")
                     print("回答: ", end="", flush=True)
                     
                     full_response = ""
                     async for chunk in client.call_stream("query_expert_stream", 
-                                                        question="什么是Python?"):
+                                                        question="帮我看看这个项目是做什么的?"):
                         print(chunk, end="", flush=True)
                         full_response += chunk
                     
@@ -162,7 +162,7 @@ class ToolCallTester:
         print("\n🧪 测试错误处理...")
         
         try:
-            async with SimpleClient(self.server_script, alias=self.alias) as client:
+            async with SimpleClient(self.server_script, alias=self.alias, config_dir="/Users/lilei/project/config/test_mcp_server_config") as client:
                 
                 # 1. 测试空问题
                 print("\n1. 测试空问题...")
@@ -207,7 +207,7 @@ class ToolCallTester:
         print("\n🧪 测试流式响应特性...")
         
         try:
-            async with SimpleClient(self.server_script, alias=self.alias) as client:
+            async with SimpleClient(self.server_script, alias=self.alias, config_dir="/Users/lilei/project/config/test_mcp_server_config") as client:
                 
                 print("测试流式响应的实时性...")
                 print("问题: 详细解释机器学习的基本概念和应用")
