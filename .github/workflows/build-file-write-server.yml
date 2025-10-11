@@ -158,7 +158,7 @@ jobs:
         echo "平台: ${{ matrix.mcp_platform }}, 架构: ${{ matrix.arch }}"
         # 创建独立的输出目录
         mkdir -p "dist/file-write-server"
-        python -m mcp_framework.build --platform ${{ matrix.mcp_platform }} --server file_write_server/file_write_server.py --no-test --output-dir "dist/file-write-server"
+        python -m mcp_framework.build --platform ${{ matrix.mcp_platform }} --server file_write_server/file_write_server.py --no-test --no-onefile --output-dir "dist/file-write-server"
         # 重命名并移动到最终位置
         if [ -f "dist/file-write-server/file-write-server${{ matrix.executable_suffix }}" ]; then
           mv "dist/file-write-server/file-write-server${{ matrix.executable_suffix }}" "dist/file-write-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"

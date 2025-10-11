@@ -16,14 +16,18 @@ class DualInstanceConfigTester:
     def __init__(self, server_script: str):
         self.server_script = server_script
         # 创建两个临时目录作为不同的项目根目录
-        self.temp_dir1 = tempfile.mkdtemp(prefix="file_reader_test1_")
-        self.temp_dir2 = tempfile.mkdtemp(prefix="file_reader_test2_")
+        self.temp_dir1 = "/Users/lilei/project/work/zj/user_manager"
+        self.temp_dir2 = "/Users/lilei/project/work/zj/user_manager/src"
         
         # 在临时目录中创建测试文件
         self._setup_test_files()
     
     def _setup_test_files(self):
-        """在临时目录中创建测试文件"""
+        """在指定目录中创建测试文件"""
+        # 确保目录存在
+        Path(self.temp_dir1).mkdir(parents=True, exist_ok=True)
+        Path(self.temp_dir2).mkdir(parents=True, exist_ok=True)
+        
         # 目录1的测试文件
         test_file1 = Path(self.temp_dir1) / "test1.py"
         test_file1.write_text("""# Test file 1
@@ -50,21 +54,40 @@ class TestClass2:
         
         # 创建子目录和文件
         subdir1 = Path(self.temp_dir1) / "subdir"
-        subdir1.mkdir()
+        subdir1.mkdir(exist_ok=True)
         (subdir1 / "nested1.txt").write_text("Nested content in dir1")
         
         subdir2 = Path(self.temp_dir2) / "subdir"
-        subdir2.mkdir()
+        subdir2.mkdir(exist_ok=True)
         (subdir2 / "nested2.txt").write_text("Nested content in dir2")
     
     def cleanup(self):
-        """清理临时目录"""
-        import shutil
+        """清理测试文件"""
         try:
-            shutil.rmtree(self.temp_dir1)
-            shutil.rmtree(self.temp_dir2)
+            # 只清理我们创建的测试文件，不删除目录本身
+            test_files = [
+                Path(self.temp_dir1) / "test1.py",
+                Path(self.temp_dir2) / "test2.py",
+                Path(self.temp_dir1) / "subdir" / "nested1.txt",
+                Path(self.temp_dir2) / "subdir" / "nested2.txt"
+            ]
+            
+            for file_path in test_files:
+                if file_path.exists():
+                    file_path.unlink()
+                    
+            # 清理子目录（如果为空）
+            subdirs = [
+                Path(self.temp_dir1) / "subdir",
+                Path(self.temp_dir2) / "subdir"
+            ]
+            
+            for subdir in subdirs:
+                if subdir.exists() and not any(subdir.iterdir()):
+                    subdir.rmdir()
+                    
         except Exception as e:
-            print(f"清理临时目录时出错: {e}")
+            print(f"清理测试文件时出错: {e}")
 
     async def test_dual_instance_config(self):
         """测试双实例配置"""
@@ -73,23 +96,13 @@ class TestClass2:
             print(f"📁 临时目录1: {self.temp_dir1}")
             print(f"📁 临时目录2: {self.temp_dir2}")
             
-            # 配置实例1 - 使用临时目录1
-            config1 = {
-                "project_root": self.temp_dir1,
-                "max_file_size": 5,
-                "enable_hidden_files": False
-            }
-            
-            # 配置实例2 - 使用临时目录2
-            config2 = {
-                "project_root": self.temp_dir2,
-                "max_file_size": 10,
-                "enable_hidden_files": True
-            }
-            
             # 创建两个客户端实例
-            async with SimpleClient(self.server_script, alias="instance1", config=config1) as client1, \
-                       SimpleClient(self.server_script, alias="instance2", config=config2) as client2:
+            async with SimpleClient(self.server_script, alias="concurrent1", config_dir="/Users/lilei/project/config/test_mcp_server_config") as client1, \
+                       SimpleClient(self.server_script, alias="concurrent2", config_dir="/Users/lilei/project/config/test_mcp_server_config") as client2:
+                
+                # 为不同别名设置各自的project_root
+                await client1.set("project_root", self.temp_dir1)
+                await client2.set("project_root", self.temp_dir2)
                 
                 print("✅ 成功创建两个客户端实例")
                 
@@ -117,29 +130,29 @@ class TestClass2:
         try:
             print(f"\n🔄 测试并发访问")
             
-            config1 = {"project_root": self.temp_dir1}
-            config2 = {"project_root": self.temp_dir2}
-            
-            async with SimpleClient(self.server_script, alias="concurrent1", config=config1) as client1, \
-                       SimpleClient(self.server_script, alias="concurrent2", config=config2) as client2:
+            async with SimpleClient(self.server_script, alias="concurrent1", config_dir="/Users/lilei/project/config/test_mcp_server_config") as client1, \
+                       SimpleClient(self.server_script, alias="concurrent2", config_dir="/Users/lilei/project/config/test_mcp_server_config") as client2:
                 
-                # 并发读取不同目录的文件
-                print("📖 并发读取文件...")
+                # 为不同别名设置各自的project_root
+                await client1.set("project_root", self.temp_dir1)
+                await client2.set("project_root", self.temp_dir2)
+                
+                print("✅ 成功创建两个客户端实例")
                 
                 async def read_file1():
-                    result = await client1.call_tool("read_file_lines", {
-                        "file_path": "test1.py",
-                        "start_line": 1,
-                        "end_line": 5
-                    })
+                    result = await client1.call("read_file_lines",
+                        file_path="test1.py",
+                        start_line=1,
+                        end_line=5
+                    )
                     return result
                 
                 async def read_file2():
-                    result = await client2.call_tool("read_file_lines", {
-                        "file_path": "test2.py", 
-                        "start_line": 1,
-                        "end_line": 5
-                    })
+                    result = await client2.call("read_file_lines",
+                        file_path="test2.py", 
+                        start_line=1,
+                        end_line=5
+                    )
                     return result
                 
                 # 并发执行
@@ -171,23 +184,24 @@ class TestClass2:
         try:
             print(f"\n🔒 测试实例隔离")
             
-            config1 = {"project_root": self.temp_dir1}
-            config2 = {"project_root": self.temp_dir2}
-            
-            async with SimpleClient(self.server_script, alias="isolation1", config=config1) as client1, \
-                       SimpleClient(self.server_script, alias="isolation2", config=config2) as client2:
+            async with SimpleClient(self.server_script, alias="concurrent1", config_dir="/Users/lilei/project/config/test_mcp_server_config") as client1, \
+                       SimpleClient(self.server_script, alias="concurrent2", config_dir="/Users/lilei/project/config/test_mcp_server_config") as client2:
+                
+                # 为不同别名设置各自的project_root
+                await client1.set("project_root", self.temp_dir1)
+                await client2.set("project_root", self.temp_dir2)
                 
                 # 实例1尝试搜索只存在于目录1的内容
                 print("🔍 实例1搜索目录1特有内容...")
-                search1 = await client1.call_tool("search_files_by_content", {
-                    "query": "hello_world"
-                })
+                search1 = await client1.call("search_files_by_content",
+                    query="hello_world"
+                )
                 
                 # 实例2尝试搜索只存在于目录2的内容
                 print("🔍 实例2搜索目录2特有内容...")
-                search2 = await client2.call_tool("search_files_by_content", {
-                    "query": "goodbye_world"
-                })
+                search2 = await client2.call("search_files_by_content",
+                    query="goodbye_world"
+                )
                 
                 # 验证隔离性
                 if search1 and "hello_world" in search1:
@@ -202,13 +216,13 @@ class TestClass2:
                 
                 # 交叉验证：实例1不应该找到目录2的内容
                 print("🔍 交叉验证实例隔离...")
-                cross_search1 = await client1.call_tool("search_files_by_content", {
-                    "query": "goodbye_world"
-                })
+                cross_search1 = await client1.call("search_files_by_content",
+                    query="goodbye_world"
+                )
                 
-                cross_search2 = await client2.call_tool("search_files_by_content", {
-                    "query": "hello_world"
-                })
+                cross_search2 = await client2.call("search_files_by_content",
+                    query="hello_world"
+                )
                 
                 if not cross_search1 or "goodbye_world" not in cross_search1:
                     print("  ✅ 实例1正确隔离，未找到目录2的内容")
@@ -231,21 +245,17 @@ class TestClass2:
         try:
             print(f"\n⚙️ 测试配置差异")
             
-            # 不同的配置
-            config1 = {
-                "project_root": self.temp_dir1,
-                "max_file_size": 1,  # 1MB限制
-                "enable_hidden_files": False
-            }
-            
-            config2 = {
-                "project_root": self.temp_dir2,
-                "max_file_size": 100,  # 100MB限制
-                "enable_hidden_files": True
-            }
-            
-            async with SimpleClient(self.server_script, alias="config_diff1", config=config1) as client1, \
-                       SimpleClient(self.server_script, alias="config_diff2", config=config2) as client2:
+            async with SimpleClient(self.server_script, alias="concurrent1", config_dir="/Users/lilei/project/config/test_mcp_server_config") as client1, \
+                       SimpleClient(self.server_script, alias="concurrent2", config_dir="/Users/lilei/project/config/test_mcp_server_config") as client2:
+                
+                # 为不同别名设置不同的配置
+                await client1.set("project_root", self.temp_dir1)
+                await client1.set("max_file_size", 1024)
+                await client1.set("enable_hidden_files", True)
+                
+                await client2.set("project_root", self.temp_dir2)
+                await client2.set("max_file_size", 2048)
+                await client2.set("enable_hidden_files", False)
                 
                 # 验证不同的配置值
                 print("📋 验证配置差异:")
@@ -281,9 +291,9 @@ class TestClass2:
         try:
             print(f"\n🛠️ 测试配置管理")
             
-            config = {"project_root": self.temp_dir1}
-            
-            async with SimpleClient(self.server_script, alias="config_mgmt", config=config) as client:
+            async with SimpleClient(self.server_script, alias="concurrent1", config_dir="/Users/lilei/project/config/test_mcp_server_config") as client:
+                # 先设置项目根目录
+                await client.set("project_root", self.temp_dir1)
                 
                 # 获取完整配置
                 print("📋 获取完整配置...")
@@ -323,7 +333,7 @@ async def main():
     print("=" * 60)
     
     # 创建测试器
-    tester = DualInstanceConfigTester("file_reader_server.py")
+    tester = DualInstanceConfigTester("./dist/file-reader-server")
     
     try:
         # 测试双实例配置

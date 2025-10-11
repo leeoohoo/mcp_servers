@@ -394,7 +394,7 @@ async def main():
     print("=" * 60)
     
     # 创建测试器
-    tester = DualInstanceTester("/Users/lilei/project/learn/mcp_servers/expert_stream_server/expert_stream_server.py")
+    tester = DualInstanceTester("./dist/expert-stream-server")
     
     try:
         # 测试第一个实例

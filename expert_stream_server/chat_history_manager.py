@@ -27,53 +27,62 @@ class ChatHistoryManager:
         self.db = None
         self.collection = None
         self.file_path = "data/chat_history.json"
+        self.initialized = False
+        self.use_mongo = False
+        self._init_lock = asyncio.Lock()
 
         # 确保数据目录存在
         os.makedirs("data", exist_ok=True)
 
     async def initialize(self):
-        """初始化存储"""
+        """初始化存储（异步探查MongoDB，短超时，失败降级到文件）"""
         if not self.enable_history:
             logger.info("📝 聊天记录功能已禁用")
             return
 
-        # 检查是否为测试模式
+        # 先确保文件存储可用，作为兜底
+        self._init_file_storage_if_needed()
+
+        # 检查测试模式与依赖可用性
         import os
         testing_mode = os.environ.get("TESTING_MODE", "false").lower() == "true"
-        
+
         if testing_mode:
             logger.info("🧪 测试模式：跳过MongoDB连接，使用文件存储")
-        elif self.mongodb_url and PYMONGO_AVAILABLE:
+            async with self._init_lock:
+                self.initialized = True
+                self.use_mongo = False
+            return
+
+        # 异步短超时探查 MongoDB，成功则切换到 mongo
+        if self.mongodb_url and PYMONGO_AVAILABLE:
             try:
-                self.mongo_client = MongoClient(self.mongodb_url, serverSelectionTimeoutMS=5000)
-                # 测试连接
-                self.mongo_client.admin.command('ping')
-
-                # 解析数据库名
-                db_name = self.mongodb_url.split('/')[-1] or 'chat_history'
-                self.db = self.mongo_client[db_name]
-                self.collection = self.db.conversations
-
-                # 创建索引
-                self.collection.create_index("conversation_id")
-                self.collection.create_index("timestamp")
-
-                logger.info(f"📝 MongoDB聊天记录存储已连接: {db_name}")
+                await asyncio.wait_for(self._try_init_mongo(), timeout=2.0)
+                async with self._init_lock:
+                    self.initialized = True
+                    self.use_mongo = True
+                logger.info("📝 MongoDB聊天记录存储已连接并启用")
                 return
             except Exception as e:
-                logger.warning(f"⚠️ MongoDB连接失败，将使用文件存储: {e}")
-                self.mongo_client = None
+                logger.warning(f"⚠️ MongoDB探查失败，使用文件存储: {e}")
 
         # 使用文件存储
-        if not os.path.exists(self.file_path):
-            with open(self.file_path, 'w', encoding='utf-8') as f:
-                json.dump([], f)
+        async with self._init_lock:
+            self.initialized = True
+            self.use_mongo = False
         logger.info(f"📝 文件聊天记录存储已初始化: {self.file_path}")
 
     async def save_message(self, conversation_id: str, role: str, content: str, metadata: Dict = None):
         """保存消息"""
         if not self.enable_history:
             return
+
+        # 确保已初始化（懒探查，短超时，不阻塞主流程）
+        try:
+            await asyncio.wait_for(self._ensure_initialized(), timeout=1.5)
+        except Exception:
+            # 初始化失败或超时，继续使用文件存储兜底
+            pass
 
         message = {
             "conversation_id": conversation_id,
@@ -84,7 +93,7 @@ class ChatHistoryManager:
         }
 
         try:
-            if self.collection:
+            if self.collection and self.use_mongo:
                 # MongoDB存储
                 await asyncio.get_event_loop().run_in_executor(
                     None, self.collection.insert_one, message
@@ -92,11 +101,11 @@ class ChatHistoryManager:
             else:
                 # 文件存储
                 await self._save_to_file(message)
-            
+
             # 记录保存的消息类型
             msg_type = metadata.get('type', 'normal') if metadata else 'normal'
             logger.debug(f"📝 已保存消息: role={role}, type={msg_type}, content_len={len(content)}")
-            
+
         except Exception as e:
             logger.error(f"❌ 保存聊天记录失败: {e}")
 
@@ -107,8 +116,14 @@ class ChatHistoryManager:
 
         limit = limit or self.history_limit
 
+        # 确保已初始化（懒探查，短超时，不阻塞主流程）
         try:
-            if self.collection:
+            await asyncio.wait_for(self._ensure_initialized(), timeout=1.5)
+        except Exception:
+            pass
+
+        try:
+            if self.collection and self.use_mongo:
                 # MongoDB查询
                 cursor = self.collection.find(
                     {"conversation_id": conversation_id}
@@ -128,6 +143,79 @@ class ChatHistoryManager:
         except Exception as e:
             logger.error(f"❌ 获取聊天记录失败: {e}")
             return []
+
+    async def _ensure_initialized(self):
+        """懒初始化：必要时异步探查MongoDB，失败则使用文件存储"""
+        if self.initialized:
+            return
+        if not self.enable_history:
+            return
+
+        async with self._init_lock:
+            if self.initialized:
+                return
+
+            # 兜底先准备文件存储
+            self._init_file_storage_if_needed()
+
+            # 检查测试模式
+            import os
+            testing_mode = os.environ.get("TESTING_MODE", "false").lower() == "true"
+            if testing_mode:
+                self.initialized = True
+                self.use_mongo = False
+                return
+
+            if self.mongodb_url and PYMONGO_AVAILABLE:
+                try:
+                    await asyncio.wait_for(self._try_init_mongo(), timeout=2.0)
+                    self.initialized = True
+                    self.use_mongo = True
+                    logger.info("📝 懒初始化：MongoDB已连接")
+                    return
+                except Exception as e:
+                    logger.warning(f"⚠️ 懒初始化：MongoDB探查失败，使用文件存储: {e}")
+
+            # 最终使用文件存储
+            self.initialized = True
+            self.use_mongo = False
+
+    def _init_file_storage_if_needed(self):
+        """确保文件存储准备就绪"""
+        try:
+            if not os.path.exists(self.file_path):
+                with open(self.file_path, 'w', encoding='utf-8') as f:
+                    json.dump([], f)
+        except Exception as e:
+            logger.warning(f"⚠️ 初始化文件存储失败（将在写入时重试）: {e}")
+
+    async def _try_init_mongo(self):
+        """在线程池中探查并初始化Mongo连接与集合（可能阻塞）"""
+
+        def _blocking_connect():
+            client = MongoClient(self.mongodb_url, serverSelectionTimeoutMS=2000)
+            # 测试连接
+            client.admin.command('ping')
+
+            # 解析数据库名
+            db_name = self.mongodb_url.split('/')[-1] or 'chat_history'
+            db = client[db_name]
+            collection = db.conversations
+
+            # 创建索引（若失败不影响使用）
+            try:
+                collection.create_index("conversation_id")
+                collection.create_index("timestamp")
+            except Exception:
+                pass
+
+            return client, db, collection
+
+        client, db, collection = await asyncio.get_event_loop().run_in_executor(None, _blocking_connect)
+        # 设置到实例
+        self.mongo_client = client
+        self.db = db
+        self.collection = collection
 
     async def _save_to_file(self, message: Dict):
         """保存到文件"""

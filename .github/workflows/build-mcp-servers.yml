@@ -168,7 +168,7 @@ jobs:
         echo "平台: ${{ matrix.mcp_platform }}, 架构: ${{ matrix.arch }}"
         # 创建独立的输出目录
         mkdir -p "dist/file-reader-server"
-        python -m mcp_framework.build --platform ${{ matrix.mcp_platform }} --server file_reader_server/file_reader_server.py --no-test --output-dir "dist/file-reader-server"
+        python -m mcp_framework.build --platform ${{ matrix.mcp_platform }} --server file_reader_server/file_reader_server.py --no-test --no-onefile --output-dir "dist/file-reader-server"
         # 重命名并移动到最终位置
         if [ -f "dist/file-reader-server/file-reader-server${{ matrix.executable_suffix }}" ]; then
           mv "dist/file-reader-server/file-reader-server${{ matrix.executable_suffix }}" "dist/file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
@@ -214,7 +214,7 @@ jobs:
         echo "平台: ${{ matrix.mcp_platform }}, 架构: ${{ matrix.arch }}"
         # 创建独立的输出目录
         mkdir -p "dist/terminal-manager-server"
-        python -m mcp_framework.build --platform ${{ matrix.mcp_platform }} --server terminal_manager_server/terminal_stream_server.py --no-test --output-dir "dist/terminal-manager-server"
+        python -m mcp_framework.build --platform ${{ matrix.mcp_platform }} --server terminal_manager_server/terminal_stream_server.py --no-test --no-onefile --output-dir "dist/terminal-manager-server"
         # 重命名并移动到最终位置
         if [ -f "dist/terminal-manager-server/terminal-stream-server${{ matrix.executable_suffix }}" ]; then
           mv "dist/terminal-manager-server/terminal-stream-server${{ matrix.executable_suffix }}" "dist/terminal-manager-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
@@ -260,7 +260,7 @@ jobs:
         echo "平台: ${{ matrix.mcp_platform }}, 架构: ${{ matrix.arch }}"
         # 创建独立的输出目录
         mkdir -p "dist/expert-stream-server"
-        python -m mcp_framework.build --platform ${{ matrix.mcp_platform }} --server expert_stream_server/expert_stream_server.py --no-test --output-dir "dist/expert-stream-server"
+        python -m mcp_framework.build --platform ${{ matrix.mcp_platform }} --server expert_stream_server/expert_stream_server.py --no-test --no-onefile --output-dir "dist/expert-stream-server"
         # 重命名并移动到最终位置
         if [ -f "dist/expert-stream-server/expert-stream-server${{ matrix.executable_suffix }}" ]; then
           mv "dist/expert-stream-server/expert-stream-server${{ matrix.executable_suffix }}" "dist/expert-stream-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"

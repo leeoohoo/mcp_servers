@@ -38,14 +38,14 @@ class ToolCallTester:
                     print(f"   工具名称: query_expert_stream")
                     print(f"   工具描述: {tool_info.description}")
                     
-                    if hasattr(tool_info, 'inputSchema') and tool_info.inputSchema:
-                        properties = tool_info.inputSchema.get('properties', {})
+                    if hasattr(tool_info, 'input_schema') and tool_info.input_schema:
+                        properties = tool_info.input_schema.get('properties', {})
                         print(f"   参数数量: {len(properties)}")
                         
                         for param_name, param_info in properties.items():
                             param_type = param_info.get('type', '未知')
                             param_desc = param_info.get('description', '无描述')
-                            is_required = param_name in tool_info.inputSchema.get('required', [])
+                            is_required = param_name in tool_info.input_schema.get('required', [])
                             required_str = "必需" if is_required else "可选"
                             print(f"     - {param_name} ({param_type}, {required_str}): {param_desc}")
                     
@@ -266,13 +266,13 @@ async def main():
     import argparse
     
     parser = argparse.ArgumentParser(description="测试 ExpertStreamServer 工具调用功能")
-    parser.add_argument("--alias", default="test_no_config", help="服务器别名")
+    parser.add_argument("--alias", default="test_no_config1", help="服务器别名")
     
     args = parser.parse_args()
     
     # 服务器脚本路径
     server_script = "expert_stream_server.py"
-    
+
     # 创建测试器
     tester = ToolCallTester(server_script, alias=args.alias)
     

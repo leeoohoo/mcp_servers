@@ -325,7 +325,7 @@ async def main():
     print("=" * 60)
     
     # 解析命令行参数
-    alias = "test_no_config"  # 默认别名
+    alias = "concurrent1"  # 默认别名
     
     if len(sys.argv) > 1:
         if sys.argv[1] == "--alias" and len(sys.argv) > 2:

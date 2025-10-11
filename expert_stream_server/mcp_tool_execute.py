@@ -12,18 +12,51 @@ logger = logging.getLogger("McpToolExecute")
 class McpToolExecute:
     """MCP工具执行器"""
 
-    def __init__(self, mcp_servers: List[Dict[str, str]], stdio_mcp_servers: List[Dict[str, str]] = None, role: str = ""):
+    def __init__(self, mcp_servers: List[Dict[str, str]], stdio_mcp_servers: List[Dict[str, str]] = None,
+                 role: str = "", lazy_discovery: bool = False):
         self.mcp_servers = mcp_servers  # HTTP 协议的 MCP 服务器
         self.stdio_mcp_servers = stdio_mcp_servers or []  # stdio 协议的 MCP 服务器
         self.tools = []
         self.tool_metadata = {}  # 存储工具元数据
         self.role = role
+        self.lazy_discovery = lazy_discovery  # 是否启用按需发现
+
+        # 添加客户端缓存
+        self._stdio_clients = {}  # 缓存 stdio 客户端 {cache_key: client}
+        self._client_locks = {}  # 客户端锁，防止并发创建 {cache_key: asyncio.Lock}
+        self._cleanup_lock = asyncio.Lock()  # 清理锁
 
     async def init(self):
-        """初始化，构建工具列表"""
-        await self.build_tools()
+        """初始化，根据模式决定是否构建工具列表"""
+        if self.lazy_discovery:
+            logger.info("⏱️ 启用按需发现模式，初始化阶段不预取工具列表")
+            # 在按需模式下，保持空的工具列表；在调用时再解析
+            self.tools = []
+            self.tool_metadata = {}
+        else:
+            await self.build_tools()
 
-    async def execute_stream(self, tool_calls: List[Dict[str, Any]], callback=None) -> AsyncGenerator[Dict[str, Any], None]:
+    async def __aenter__(self):
+        """异步上下文管理器入口"""
+        await self.init()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """异步上下文管理器出口，清理所有资源"""
+        await self.cleanup_stdio_clients()
+
+    async def close(self):
+        """手动关闭，清理所有资源"""
+        await self.cleanup_stdio_clients()
+
+    def __del__(self):
+        """析构函数，确保资源被清理"""
+        if hasattr(self, '_stdio_clients') and self._stdio_clients:
+            logger.warning(f"⚠️ McpToolExecute 实例被销毁但仍有 {len(self._stdio_clients)} 个未清理的stdio客户端")
+            # 注意：在 __del__ 中不能使用 await，只能记录警告
+
+    async def execute_stream(self, tool_calls: List[Dict[str, Any]], callback=None) -> AsyncGenerator[
+        Dict[str, Any], None]:
         """执行工具调用（流式版本）"""
         logger.info(f"🔧 开始执行流式工具调用，共 {len(tool_calls)} 个工具")
 
@@ -52,8 +85,10 @@ class McpToolExecute:
                     logger.warning(f"❌ 工具参数不是字典类型: {type(tool_args)} - {tool_args}，转换为空字典")
                     tool_args = {}
 
-                # 查找工具信息
+                # 查找工具信息；若未找到且启用按需模式，则尝试解析
                 tool_info = self.find_tool_info(tool_name)
+                if not tool_info and self.lazy_discovery:
+                    tool_info = await self._lazy_resolve_tool(tool_name)
                 if not tool_info:
                     raise Exception(f"Tool not found: {tool_name}")
 
@@ -65,7 +100,7 @@ class McpToolExecute:
                 try:
                     # 根据协议类型选择调用方式
                     protocol = tool_info.get('protocol', 'http')
-                    
+
                     if protocol == 'stdio':
                         # 使用 stdio 协议调用
                         logger.info(f"🔧 使用stdio协议调用工具: {tool_name}")
@@ -87,7 +122,7 @@ class McpToolExecute:
 
                     logger.info(f"🔧 开始流式调用工具: {tool_name} (协议: {protocol})")
                     chunk_count = 0
-                    
+
                     async for chunk in stream_generator:
                         # 安全地处理不同类型的 chunk
                         chunk_str = self._safe_chunk_to_string(chunk)
@@ -112,7 +147,8 @@ class McpToolExecute:
                         }
 
                     stream_success = True
-                    logger.info(f"✅ 工具 {tool_name} 流式调用成功，共收到 {chunk_count} 个块，累积内容长度: {len(accumulated_content)}")
+                    logger.info(
+                        f"✅ 工具 {tool_name} 流式调用成功，共收到 {chunk_count} 个块，累积内容长度: {len(accumulated_content)}")
 
                 except GeneratorExit:
                     logger.info(f"🛑 工具 {tool_name} 的流式执行被提前终止")
@@ -137,7 +173,7 @@ class McpToolExecute:
                 if stream_success:
                     logger.info(f"🔧 工具 {tool_name} 准备生成最终结果，累积内容长度: {len(accumulated_content)}")
                     logger.info(f"🔧 累积内容预览: {accumulated_content[:200]}...")
-                    
+
                     yield {
                         'tool_call_id': tool_call_id,
                         'role': 'tool',
@@ -206,12 +242,63 @@ class McpToolExecute:
         else:
             return str(chunk)
 
+    async def _lazy_resolve_tool(self, tool_name: str) -> Optional[Dict[str, str]]:
+        """按需解析工具信息（仅针对 stdio 前缀路由）"""
+        # 期望工具名格式: {server_name}_{original_tool}
+        if "_" not in tool_name:
+            return None
+        server_name, original = tool_name.split("_", 1)
+
+        # 查找对应的 stdio 服务器配置
+        stdio_server = None
+        for s in self.stdio_mcp_servers:
+            if s.get("name") == server_name:
+                stdio_server = s
+                break
+        if not stdio_server:
+            return None
+
+        # 获取或创建客户端，并验证工具存在
+        command = stdio_server["command"]
+        alias = stdio_server.get("alias", server_name)
+        config_dir = stdio_server.get("config_dir", "")
+        client = await self._get_or_create_stdio_client(command, alias, config_dir)
+
+        has_tool = await client.has_tool(original, role=self.role)
+        if not has_tool:
+            return None
+
+        # 获取工具信息并缓存元数据
+        tool_info = await client.tool_info(original, role=self.role)
+        meta = {
+            'original_name': original,
+            'server_name': server_name,
+            'command': command,
+            'alias': alias,
+            'protocol': 'stdio'
+        }
+        self.tool_metadata[tool_name] = meta
+        # 也将该工具添加到公开工具列表缓存（如果需要）
+        openai_tool = {
+            'type': 'function',
+            'function': {
+                'name': tool_name,
+                'description': tool_info.description if tool_info else '',
+                'parameters': tool_info.input_schema if tool_info and hasattr(tool_info, 'input_schema') else {}
+            }
+        }
+        # 避免重复追加
+        if not any(t.get('function', {}).get('name') == tool_name for t in self.tools):
+            self.tools.append(openai_tool)
+
+        return meta
 
     def find_tool_info(self, tool_name: str) -> Optional[Dict[str, str]]:
-        """查找工具信息"""
+        """查找工具信息（可能由按需解析填充）"""
         return self.tool_metadata.get(tool_name)
 
-    async def call_mcp_tool_stream(self, server_url: str, tool_name: str, arguments: Dict[str, Any]) -> AsyncGenerator[str, None]:
+    async def call_mcp_tool_stream(self, server_url: str, tool_name: str, arguments: Dict[str, Any]) -> AsyncGenerator[
+        str, None]:
         """调用MCP工具（流式版本，使用远端 SSE /sse/tool/call 接口）"""
         session = None
         response = None
@@ -377,21 +464,106 @@ class McpToolExecute:
         finally:
             await self._cleanup_stream_resources(response, session, tool_name)
 
-    async def call_stdio_tool_stream(self, server_name: str, command: str, alias: str, tool_name: str, arguments: Dict[str, Any]) -> AsyncGenerator[str, None]:
-        """使用 stdio 协议调用工具（流式版本）"""
+    def _get_client_cache_key(self, command: str, alias: str, config_dir: str) -> str:
+        """生成客户端缓存键"""
+        return f"{command}:{alias}:{config_dir}"
+
+    async def _get_or_create_stdio_client(self, command: str, alias: str, config_dir: str):
+        """获取或创建 stdio 客户端（带缓存）"""
+        cache_key = self._get_client_cache_key(command, alias, config_dir)
+
+        # 检查是否已有客户端
+        if cache_key in self._stdio_clients:
+            client = self._stdio_clients[cache_key]
+            # 简化检查：只要客户端不为空就返回
+            if client is not None:
+                logger.debug(f"🔄 复用已缓存的stdio客户端: {cache_key}")
+                return client
+            else:
+                # 客户端为空，从缓存中移除
+                logger.debug(f"🧹 移除空的stdio客户端: {cache_key}")
+                await self._remove_stdio_client(cache_key)
+
+        # 获取或创建锁
+        if cache_key not in self._client_locks:
+            self._client_locks[cache_key] = asyncio.Lock()
+
+        # 使用锁确保只有一个协程创建客户端
+        async with self._client_locks[cache_key]:
+            # 双重检查，防止在等待锁的过程中其他协程已经创建了客户端
+            if cache_key in self._stdio_clients:
+                client = self._stdio_clients[cache_key]
+                if hasattr(client, '_session') and not getattr(client, '_closed', False):
+                    logger.debug(f"🔄 复用刚创建的stdio客户端: {cache_key}")
+                    return client
+
+            # 创建新客户端
+            logger.info(f"🆕 创建新的stdio客户端: {cache_key}")
+            from mcp_framework.client.simple import SimpleClient
+
+            client = SimpleClient(command, alias=alias, config_dir=config_dir)
+            await client.__aenter__()  # 初始化客户端
+
+            # 缓存客户端
+            self._stdio_clients[cache_key] = client
+            logger.info(f"✅ stdio客户端已缓存: {cache_key}")
+
+            return client
+
+    async def _remove_stdio_client(self, cache_key: str):
+        """移除指定的 stdio 客户端"""
+        async with self._cleanup_lock:
+            if cache_key in self._stdio_clients:
+                client = self._stdio_clients[cache_key]
+                try:
+                    # 清理客户端资源
+                    if hasattr(client, '__aexit__'):
+                        await client.__aexit__(None, None, None)
+                except Exception as e:
+                    logger.warning(f"⚠️ 清理stdio客户端时出现警告 {cache_key}: {e}")
+
+                # 从缓存中移除
+                del self._stdio_clients[cache_key]
+                logger.debug(f"🧹 已移除stdio客户端: {cache_key}")
+
+    async def cleanup_stdio_clients(self):
+        """清理所有 stdio 客户端"""
+        async with self._cleanup_lock:
+            logger.info(f"🧹 开始清理所有stdio客户端，共 {len(self._stdio_clients)} 个")
+
+            for cache_key in list(self._stdio_clients.keys()):
+                await self._remove_stdio_client(cache_key)
+
+            # 清理锁
+            self._client_locks.clear()
+            logger.info(f"✅ 所有stdio客户端已清理完成")
+
+    async def call_stdio_tool_stream(self, server_name: str, command: str, alias: str, tool_name: str,
+                                     arguments: Dict[str, Any]) -> AsyncGenerator[str, None]:
+        """使用 stdio 协议调用工具（流式版本，带客户端缓存）"""
+        config_dir = "/Users/lilei/project/config/test_mcp_server_config"
+        client = None
+
         try:
             logger.info(f"🔧 开始stdio工具调用: {tool_name} on {server_name} (alias: {alias})")
-            
-            # 使用 SimpleClient 调用工具
-            from mcp_framework.client.simple import SimpleClient
-            
-            async with SimpleClient(command, alias=alias, config_dir="/Users/lilei/project/config/test_mcp_server_config") as client:
-                # 使用流式调用工具
-                async for chunk in client.call_stream(tool_name, **arguments):
-                    yield chunk
-                    
+
+            # 获取或创建缓存的客户端
+            client = await self._get_or_create_stdio_client(command, alias, config_dir)
+
+            # 使用缓存的客户端进行流式调用
+            logger.debug(f"🔧 使用缓存客户端调用工具: {tool_name}")
+            async for chunk in client.call_stream(tool_name, **arguments):
+                yield chunk
+
         except Exception as e:
             logger.error(f"❌ stdio工具调用失败 {tool_name}: {e}")
+
+            # 如果是客户端相关错误，尝试移除缓存的客户端
+            if client:
+                cache_key = self._get_client_cache_key(command, alias, config_dir)
+                logger.warning(f"⚠️ 移除可能失效的stdio客户端: {cache_key}")
+                await self._remove_stdio_client(cache_key)
+
             error_msg = f"Error calling stdio tool {tool_name}: {str(e)}"
             yield error_msg
 
@@ -440,16 +612,16 @@ class McpToolExecute:
         else:
             return ""
 
-
     async def build_tools(self):
         """构建工具列表"""
         try:
             self.tools = []
             self.tool_metadata = {}
 
-            logger.info(f"🔧 开始构建工具列表，配置的HTTP MCP服务器数量: {len(self.mcp_servers)}, stdio MCP服务器数量: {len(self.stdio_mcp_servers)}")
+            logger.info(
+                f"🔧 开始构建工具列表，配置的HTTP MCP服务器数量: {len(self.mcp_servers)}, stdio MCP服务器数量: {len(self.stdio_mcp_servers)}")
 
-            # 处理 HTTP 协议的 MCP 服务器
+            # 处理 HTTP 协议的 MCP 服务器（始终探查）
             for mcp_server in self.mcp_servers:
                 try:
                     logger.info(f"🔧 正在从HTTP MCP服务器获取工具: {mcp_server['name']} ({mcp_server['url']})")
@@ -461,7 +633,7 @@ class McpToolExecute:
                         'method': 'tools/list',
                         'params': {}
                     }
-                    
+
                     # 如果设置了role，添加到请求参数中
                     if self.role:
                         request['params']['role'] = self.role
@@ -519,21 +691,24 @@ class McpToolExecute:
                     alias = stdio_server.get('alias', server_name)  # 使用配置中的 alias，如果没有则使用 server_name
                     logger.info(f"🔧 正在从stdio MCP服务器获取工具: {server_name} ({command}) alias: {alias}")
 
-                    # 使用 SimpleClient 获取工具列表
+                    # 使用缓存的 SimpleClient 获取工具列表
                     from mcp_framework.client.simple import SimpleClient
-                    
-                    async with SimpleClient(command, alias=alias) as client:
-                        # 获取工具列表
-                        tool_names = await client.tools()
-                        
+
+                    # 获取或创建缓存的客户端
+                    client = await self._get_or_create_stdio_client(command, alias, stdio_server.get('config_dir', ''))
+
+                    try:
+                        # 获取工具列表，传递 role 进行过滤（如有）
+                        tool_names = await client.tools(role=self.role)
+
                         if tool_names:
                             logger.info(f"✅ 从stdio服务器 {server_name} 获取到 {len(tool_names)} 个工具")
 
                             # 转换为OpenAI工具格式
                             for tool_name in tool_names:
-                                # 获取工具详细信息
-                                tool_info = await client.tool_info(tool_name)
-                                
+                                # 获取工具详细信息，传递 role 进行过滤（如有）
+                                tool_info = await client.tool_info(tool_name, role=self.role)
+
                                 prefixed_name = f"{server_name}_{tool_name}"
 
                                 openai_tool = {
@@ -541,7 +716,8 @@ class McpToolExecute:
                                     'function': {
                                         'name': prefixed_name,
                                         'description': tool_info.description if tool_info else '',
-                                        'parameters': tool_info.inputSchema if tool_info and hasattr(tool_info, 'inputSchema') else {}
+                                        'parameters': tool_info.input_schema if tool_info and hasattr(tool_info,
+                                                                                                      'input_schema') else {}
                                     }
                                 }
 
@@ -555,9 +731,17 @@ class McpToolExecute:
                                 }
 
                                 self.tools.append(openai_tool)
-                                logger.info(f"  - 添加stdio工具: {prefixed_name} ({tool_info.description if tool_info else ''})")
+                                logger.info(
+                                    f"  - 添加stdio工具: {prefixed_name} ({tool_info.description if tool_info else ''})")
                         else:
                             logger.warning(f"❌ 从stdio服务器 {server_name} 获取工具列表失败: 无工具返回")
+
+                    except Exception as client_error:
+                        # 如果客户端出现问题，从缓存中移除
+                        cache_key = self._get_client_cache_key(command, alias, stdio_server.get('config_dir', ''))
+                        await self._remove_stdio_client(cache_key)
+                        logger.error(f"❌ 使用缓存客户端获取工具失败，已从缓存移除: {client_error}")
+                        raise client_error
 
                 except Exception as e:
                     logger.error(f"❌ Failed to get tools from stdio MCP server {server_name}: {e}")

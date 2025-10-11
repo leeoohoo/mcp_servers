@@ -158,7 +158,7 @@ jobs:
         echo "平台: ${{ matrix.mcp_platform }}, 架构: ${{ matrix.arch }}"
         # 创建独立的输出目录
         mkdir -p "dist/file-reader-server"
-        python -m mcp_framework.build --platform ${{ matrix.mcp_platform }} --server file_reader_server/file_reader_server.py --no-test --output-dir "dist/file-reader-server"
+        python -m mcp_framework.build --platform ${{ matrix.mcp_platform }} --server file_reader_server/file_reader_server.py --no-test --no-onefile --output-dir "dist/file-reader-server"
         # 重命名并移动到最终位置
         if [ -f "dist/file-reader-server/file-reader-server${{ matrix.executable_suffix }}" ]; then
           mv "dist/file-reader-server/file-reader-server${{ matrix.executable_suffix }}" "dist/file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"

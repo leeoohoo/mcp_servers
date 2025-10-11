@@ -96,8 +96,8 @@ class ToolsListTester:
                             description = description[:200] + "..."
                         print(f"  描述: {description}")
                         
-                        if hasattr(tool_info, 'inputSchema') and tool_info.inputSchema:
-                            properties = tool_info.inputSchema.get('properties', {})
+                        if hasattr(tool_info, 'input_schema') and tool_info.input_schema:
+                            properties = tool_info.input_schema.get('properties', {})
                             if properties:
                                 print(f"  参数数量: {len(properties)}")
                                 for param_name, param_info in properties.items():
@@ -106,7 +106,7 @@ class ToolsListTester:
                                     # 截断过长的参数描述
                                     if len(param_desc) > 100:
                                         param_desc = param_desc[:100] + "..."
-                                    is_required = param_name in tool_info.inputSchema.get('required', [])
+                                    is_required = param_name in tool_info.input_schema.get('required', [])
                                     required_str = "必需" if is_required else "可选"
                                     print(f"    - {param_name} ({param_type}, {required_str}): {param_desc}")
                             else:
@@ -186,7 +186,7 @@ async def main():
     print("=" * 60)
     
     # 解析命令行参数
-    alias = "test_no_config"  # 默认别名
+    alias = "test_no_config1"  # 默认别名
     
     if len(sys.argv) > 1:
         if sys.argv[1] == "--alias" and len(sys.argv) > 2:
@@ -197,7 +197,7 @@ async def main():
     print(f"📝 使用别名: {alias}")
     
     # 创建测试器
-    tester = ToolsListTester("expert_stream_server.py", alias)
+    tester = ToolsListTester("./dist/expert-stream-server/expert-stream-server", alias)
     
     try:
         # 测试工具列表获取
