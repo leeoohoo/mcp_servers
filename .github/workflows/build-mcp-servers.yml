@@ -479,23 +479,50 @@ jobs:
         find . -type f -executable 2>/dev/null || echo "查找可执行文件完成"
         
         if [ "${{ matrix.platform }}" = "windows" ]; then
-          # Windows 使用 zip，确保包含所有服务器文件
-          if command -v 7z >/dev/null 2>&1; then
-            7z a ../${{ matrix.archive_name }}.zip *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}
+          # Windows 使用 zip - 处理--no-onefile模式的目录结构
+          # 查找所有服务器目录
+          found_dirs=""
+          for server in file-reader-server file-write-server expert-stream-server terminal-manager-server task-manager-server; do
+            target_dir="${server}-${{ matrix.platform }}-${{ matrix.arch }}"
+            if [ -d "$target_dir" ]; then
+              found_dirs="$found_dirs $target_dir"
+            fi
+          done
+          
+          if [ -n "$found_dirs" ]; then
+            echo "打包目录: $found_dirs"
+            if command -v 7z >/dev/null 2>&1; then
+              7z a ../${{ matrix.archive_name }}.zip $found_dirs
+            else
+              powershell -Command "Compress-Archive -Path '$found_dirs' -DestinationPath '../${{ matrix.archive_name }}.zip'"
+            fi
           else
-            # 备用方案：使用 PowerShell，明确指定文件模式
-            powershell -Command "Compress-Archive -Path '*-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}' -DestinationPath '../${{ matrix.archive_name }}.zip'"
+            # 兼容单文件模式
+            if command -v 7z >/dev/null 2>&1; then
+              7z a ../${{ matrix.archive_name }}.zip *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}
+            else
+              powershell -Command "Compress-Archive -Path '*-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}' -DestinationPath '../${{ matrix.archive_name }}.zip'"
+            fi
           fi
         else
-          # Linux 和 macOS 使用 tar.gz
-          # 使用更宽松的匹配模式，匹配所有可执行文件
-          if ls *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }} 1> /dev/null 2>&1; then
+          # Linux 和 macOS 使用 tar.gz - 处理--no-onefile模式的目录结构
+          # 查找所有服务器目录
+          found_dirs=""
+          for server in file-reader-server file-write-server expert-stream-server terminal-manager-server task-manager-server; do
+            target_dir="${server}-${{ matrix.platform }}-${{ matrix.arch }}"
+            if [ -d "$target_dir" ]; then
+              found_dirs="$found_dirs $target_dir"
+            fi
+          done
+          
+          if [ -n "$found_dirs" ]; then
+            echo "打包目录: $found_dirs"
+            tar -czf ../${{ matrix.archive_name }}.tar.gz $found_dirs
+          elif ls *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }} 1> /dev/null 2>&1; then
+            # 兼容单文件模式
             tar -czf ../${{ matrix.archive_name }}.tar.gz *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}
           else
-            echo "警告: 未找到匹配 *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }} 的文件"
-            echo "尝试打包所有可执行文件:"
-            ls -la
-            # 备用方案：打包所有文件
+            echo "警告: 未找到匹配的文件，打包所有文件"
             tar -czf ../${{ matrix.archive_name }}.tar.gz *
           fi
         fi

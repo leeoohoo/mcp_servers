@@ -317,15 +317,31 @@ jobs:
         ls -la
         
         if [ "${{ matrix.platform }}" = "windows" ]; then
-          # Windows 使用 zip
-          if command -v 7z >/dev/null 2>&1; then
-            7z a ../${{ matrix.archive_name }}.zip *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}
+          # Windows 使用 zip - 处理--no-onefile模式的目录结构
+          target_dir="file-write-server-${{ matrix.platform }}-${{ matrix.arch }}"
+          if [ -d "$target_dir" ]; then
+            echo "打包目录: $target_dir"
+            if command -v 7z >/dev/null 2>&1; then
+              7z a ../${{ matrix.archive_name }}.zip "$target_dir"
+            else
+              powershell -Command "Compress-Archive -Path '$target_dir' -DestinationPath '../${{ matrix.archive_name }}.zip'"
+            fi
           else
-            powershell -Command "Compress-Archive -Path '*-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}' -DestinationPath '../${{ matrix.archive_name }}.zip'"
+            # 兼容单文件模式
+            if command -v 7z >/dev/null 2>&1; then
+              7z a ../${{ matrix.archive_name }}.zip *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}
+            else
+              powershell -Command "Compress-Archive -Path '*-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}' -DestinationPath '../${{ matrix.archive_name }}.zip'"
+            fi
           fi
         else
-          # Linux 和 macOS 使用 tar.gz
-          if ls *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }} 1> /dev/null 2>&1; then
+          # Linux 和 macOS 使用 tar.gz - 处理--no-onefile模式的目录结构
+          target_dir="file-write-server-${{ matrix.platform }}-${{ matrix.arch }}"
+          if [ -d "$target_dir" ]; then
+            echo "打包目录: $target_dir"
+            tar -czf ../${{ matrix.archive_name }}.tar.gz "$target_dir"
+          elif ls *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }} 1> /dev/null 2>&1; then
+            # 兼容单文件模式
             tar -czf ../${{ matrix.archive_name }}.tar.gz *-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}
           else
             echo "警告: 未找到匹配的文件，打包所有文件"
