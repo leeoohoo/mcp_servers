@@ -159,38 +159,58 @@ jobs:
         # 创建独立的输出目录
         mkdir -p "dist/file-reader-server"
         python -m mcp_framework.build --platform ${{ matrix.mcp_platform }} --server file_reader_server/file_reader_server.py --no-test --no-onefile --output-dir "dist/file-reader-server"
-        # 重命名并移动到最终位置
-        if [ -f "dist/file-reader-server/file-reader-server${{ matrix.executable_suffix }}" ]; then
-          mv "dist/file-reader-server/file-reader-server${{ matrix.executable_suffix }}" "dist/file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
+        
+        # 处理--no-onefile模式的目录输出结构
+        cd dist/file-reader-server
+        
+        # 查找构建输出目录（--no-onefile会创建一个包含所有文件的目录）
+        build_dir=""
+        for dir in */; do
+          if [ -d "$dir" ] && [ -f "${dir}file-reader-server${{ matrix.executable_suffix }}" ]; then
+            build_dir="$dir"
+            break
+          fi
+        done
+        
+        if [ -n "$build_dir" ]; then
+          echo "✅ 找到构建目录: $build_dir"
+          # 将整个目录重命名为最终名称
+          mv "$build_dir" "../file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}"
+          cd ..
+          rm -rf "file-reader-server"
         else
-          # 处理MCP Framework生成的tar.gz文件或带时间戳的文件名
-          cd dist/file-reader-server
-          # 首先尝试解压tar.gz文件
+          # 如果没有找到目录，检查是否有tar.gz文件需要解压
           for tarfile in *.tar.gz; do
             if [ -f "$tarfile" ]; then
               echo "解压 $tarfile"
               tar -xzf "$tarfile"
-              # 查找解压后的可执行文件
-              for exe in file-reader-server*${{ matrix.executable_suffix }}; do
-                if [ -f "$exe" ] && [ -x "$exe" ]; then
-                  mv "$exe" "../file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
-                  cd ../..
-                  rm -rf "dist/file-reader-server"
+              # 查找解压后的目录
+              for dir in */; do
+                if [ -d "$dir" ] && [ -f "${dir}file-reader-server${{ matrix.executable_suffix }}" ]; then
+                  mv "$dir" "../file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}"
+                  cd ..
+                  rm -rf "file-reader-server"
                   exit 0
                 fi
               done
             fi
           done
-          # 如果没有tar.gz文件，处理带时间戳的文件名
+          
+          # 如果还是没找到，尝试查找单个可执行文件（兼容性处理）
           for exe in file-reader-server*${{ matrix.executable_suffix }}; do
             if [ -f "$exe" ]; then
-              mv "$exe" "../file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.executable_suffix }}"
-              break
+              mkdir -p "../file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}"
+              mv "$exe" "../file-reader-server-${{ matrix.platform }}-${{ matrix.arch }}/"
+              cd ..
+              rm -rf "file-reader-server"
+              exit 0
             fi
           done
-          cd ../..
+          
+          echo "❌ 未找到构建输出"
+          cd ..
+          exit 1
         fi
-        rm -rf "dist/file-reader-server"
       shell: bash
 
     # 8. 验证构建产物
@@ -206,28 +226,61 @@ jobs:
         
         cd dist
         
-        for exe in *${{ matrix.executable_suffix }}; do
-          if [ -f "$exe" ]; then
-            echo "✅ 找到: $exe"
+        # 检查目录结构（--no-onefile模式）
+        for item in *; do
+          if [ -d "$item" ]; then
+            echo "✅ 找到构建目录: $item"
             
-            # 显示文件信息
-            ls -lh "$exe"
-            file "$exe" 2>/dev/null || echo "文件类型检查完成"
+            # 显示目录信息
+            ls -lh "$item/"
             
-            # 仅在本地构建时测试可执行文件
+            # 查找主执行文件
+            main_exe=""
+            for exe in "$item"/*${{ matrix.executable_suffix }}; do
+              if [ -f "$exe" ] && [[ "$(basename "$exe")" == *"file-reader-server"* ]]; then
+                main_exe="$exe"
+                break
+              fi
+            done
+            
+            if [ -n "$main_exe" ]; then
+              echo "✅ 找到主执行文件: $main_exe"
+              file "$main_exe" 2>/dev/null || echo "文件类型检查完成"
+              
+              # 仅在本地构建时测试可执行文件
+              if [ "${{ matrix.mcp_platform }}" = "native" ]; then
+                echo "测试可执行文件: $main_exe"
+                timeout 10s "$main_exe" --help || echo "帮助测试完成: $main_exe"
+              fi
+              
+              # Linux 特殊处理：确保文件权限正确
+              if [ "${{ matrix.platform }}" = "linux" ]; then
+                echo "🐧 Linux 权限修复:"
+                chmod +x "$main_exe" 2>/dev/null || echo "权限修复完成"
+                ls -la "$main_exe" 2>/dev/null || echo "权限检查完成"
+              fi
+            else
+              echo "❌ 在目录 $item 中未找到主执行文件"
+              exit 1
+            fi
+          elif [ -f "$item" ] && [[ "$item" == *${{ matrix.executable_suffix }} ]]; then
+            # 兼容性处理：如果还是单文件模式
+            echo "✅ 找到单文件: $item"
+            ls -lh "$item"
+            file "$item" 2>/dev/null || echo "文件类型检查完成"
+            
             if [ "${{ matrix.mcp_platform }}" = "native" ]; then
-              echo "测试可执行文件: $exe"
-              timeout 10s "./$exe" --help || echo "帮助测试完成: $exe"
+              echo "测试可执行文件: $item"
+              timeout 10s "./$item" --help || echo "帮助测试完成: $item"
+            fi
+            
+            if [ "${{ matrix.platform }}" = "linux" ]; then
+              echo "🐧 Linux 权限修复:"
+              chmod +x "$item" 2>/dev/null || echo "权限修复完成"
+              ls -la "$item" 2>/dev/null || echo "权限检查完成"
             fi
           fi
         done
-        
-        # Linux 特殊处理：确保文件权限正确
-        if [ "${{ matrix.platform }}" = "linux" ]; then
-          echo "🐧 Linux 权限修复:"
-          chmod +x *${{ matrix.executable_suffix }} 2>/dev/null || echo "权限修复完成"
-          ls -la *${{ matrix.executable_suffix }} 2>/dev/null || echo "没有找到可执行文件"
-        fi
 
     # 9. macOS 特殊处理：显示架构信息
     - name: macOS Architecture Info
