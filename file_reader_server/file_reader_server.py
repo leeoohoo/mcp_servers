@@ -309,7 +309,7 @@ def main():
         # 使用 MCP 框架启动器启动服务器
         simple_main(
             server_instance=server,
-            server_name="File Reader MCP Server"
+            server_name="file_reader_MCP_server"
         )
     except Exception as e:
         logger.error(f"启动服务器失败: {e}")
