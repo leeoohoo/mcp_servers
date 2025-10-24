@@ -333,7 +333,7 @@ async def main():
     print("=" * 60)
     
     # 创建测试器
-    tester = DualInstanceConfigTester("./dist/file-reader-server")
+    tester = DualInstanceConfigTester("./dist/file-reader-server/file-reader-server")
     
     try:
         # 测试双实例配置

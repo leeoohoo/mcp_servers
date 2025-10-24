@@ -523,7 +523,7 @@ async def main():
     # 持久客户端模式测试
     print("\n🔄 运行持久客户端模式测试...")
     persistent_tester = PersistentToolCallTester(
-        server_script="file_reader_server.py",
+        server_script="./dist/file-reader-server/file-reader-server",
         alias=args.alias,
         config_dir=args.config_dir
     )
